@@ -96,7 +96,6 @@
 <p>将同时安装 Playwright 以及 Chromium、Firefox 和 WebKit 的浏览器驱动依赖。</p>
 <h2 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h2><h3 id="codegen"><a href="#codegen" class="headerlink" title="codegen"></a>codegen</h3><p>Playwright 支持记录用户在浏览器中的操作并且自动生成代码。</p>
 <figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python -m playwright codegen</span><br></pre></td></tr></table></figure>
-<p><img src="https://tcs.teambition.net/storage/312003bdeab729f7a884779d06e73bbd0541?Signature=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcHBJRCI6IjU5Mzc3MGZmODM5NjMyMDAyZTAzNThmMSIsIl9hcHBJZCI6IjU5Mzc3MGZmODM5NjMyMDAyZTAzNThmMSIsIl9vcmdhbml6YXRpb25JZCI6IjVmNTQ0ZGU0YTk3MDZlMmE2OWVhOGEzYyIsImV4cCI6MTYwODQzMDYwNCwiaWF0IjoxNjA3ODI1ODA0LCJyZXNvdXJjZSI6Ii9zdG9yYWdlLzMxMjAwM2JkZWFiNzI5ZjdhODg0Nzc5ZDA2ZTczYmJkMDU0MSJ9.Mi7FTpasKHaDwo4XS-wTHwn134Om8otObsg-MVwG96k&download=95930164-ad52fb80-0d7a-11eb-852d-04bfd19de800.gif"></p>
 <p>Playwright 支持同步 API 以及异步 API，它们在功能方面是相同的，只是在使用API的方式上不同。</p>
 <h3 id="同步-API-demo"><a href="#同步-API-demo" class="headerlink" title="同步 API demo"></a>同步 API demo</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">from playwright import sync_playwright</span><br><span class="line"></span><br><span class="line">with sync_playwright() as p:</span><br><span class="line">    for browser_type in [p.chromium, p.firefox, p.webkit]:</span><br><span class="line">        browser = browser_type.launch()</span><br><span class="line">        page = browser.newPage()</span><br><span class="line">        page.goto(&#x27;http://whatsmyuseragent.org/&#x27;)</span><br><span class="line">        page.screenshot(path=f&#x27;example-&#123;browser_type.name&#125;.png&#x27;)</span><br><span class="line">        browser.close()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 <h3 id="异步-API-demo"><a href="#异步-API-demo" class="headerlink" title="异步 API demo"></a>异步 API demo</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">import asyncio</span><br><span class="line">from playwright import async_playwright</span><br><span class="line"></span><br><span class="line">async def main():</span><br><span class="line">    async with async_playwright() as p:</span><br><span class="line">        for browser_type in [p.chromium, p.firefox, p.webkit]:</span><br><span class="line">            browser = await browser_type.launch()</span><br><span class="line">            page = await browser.newPage()</span><br><span class="line">            await page.goto(&#x27;http://whatsmyuseragent.org/&#x27;)</span><br><span class="line">            await page.screenshot(path=f&#x27;example-&#123;browser_type.name&#125;.png&#x27;)</span><br><span class="line">            await browser.close()</span><br><span class="line"></span><br><span class="line">asyncio.get_event_loop().run_until_complete(main())</span><br><span class="line"></span><br></pre></td></tr></table></figure>
@@ -127,18 +126,6 @@
     
 
     <!-- copyright -->
-    
-    <div class="declare">
-      <ul class="post-copyright">
-        <li>
-          <i class="ri-copyright-line"></i>
-          <strong>Copyright： </strong>
-          
-          Copyright is owned by the author. For commercial reprints, please contact the author for authorization. For non-commercial reprints, please indicate the source.
-          
-        </li>
-      </ul>
-    </div>
     
     <footer class="article-footer">
        
