@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-cn">
+
+
+<head>
+  <meta charset="utf-8" />
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>
+    Go语言学习笔记-数据类型 |  Hill&#39;s blog
+  </title>
+  <meta name="generator" content="hexo-theme-ayer">
+  
+  <link rel="shortcut icon" href="/favicon.ico" />
+  
+  
+<link rel="stylesheet" href="/dist/main.css">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css">
+  
+<link rel="stylesheet" href="/css/custom.css">
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+  
+  
+
+  
+
+</head>
+
+</html>
+
+<body>
+  <div id="app">
+    
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Go语言学习笔记-数据类型"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  Go语言学习笔记-数据类型
+</h1>
+ 
+
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2021/03/07/Go%E8%AF%AD%E8%A8%80%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/" class="article-date">
+  <time datetime="2021-03-07T10:30:17.000Z" itemprop="datePublished">2021-03-07</time>
+</a>   
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> Word count:</span>
+            <span class="post-count">11.1k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> Reading time≈</span>
+            <span class="post-count">42 min</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h1 id="常量"><a href="#常量" class="headerlink" title="常量"></a>常量</h1><p>常量用关键字<code>const</code>定义，用于存储不会改变的数据。</p>
+<p>存储在常量中的数据类型可以是布尔型、数字型（整数型、浮点数和复数）和字符串类型。</p>
+<p>常量的定义格式：<code>const identifier [type] = value</code></p>
+<p>可以省略<code>[type]</code>，因为编译器可以根据变量的值来推断类型。</p>
+<p>常量值必须在编译时就能够确定，因此不能使用函数的返回值来作为常量的值，但是内置函数可以使用，比如<code>len()</code></p>
+<p>常量还可以用作枚举：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> (</span><br><span class="line">	Unknown = <span class="number">0</span></span><br><span class="line">	Female = <span class="number">1</span></span><br><span class="line">	Male = <span class="number">2</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+<p>现在，数字 0、1 和 2 分别代表未知性别、女性和男性。这些枚举值可以用于测试某个变量或常量的实际值，比如使用 switch/case 结构。</p>
+<p>在这个例子中，<code>iota</code> 可以被用作枚举值：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> (</span><br><span class="line">	a = <span class="literal">iota</span></span><br><span class="line">	b = <span class="literal">iota</span></span><br><span class="line">	c = <span class="literal">iota</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+<p>第一个 <code>iota</code> 等于 0，每当 <code>iota</code> 在新的一行被使用时，它的值都会自动加 1，并且没有赋值的常量默认会应用上一行的赋值表达式：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 赋值一个常量时，之后没赋值的常量都会应用上一行的赋值表达式</span></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">	a = <span class="literal">iota</span>  <span class="comment">// a = 0</span></span><br><span class="line">	b         <span class="comment">// b = 1</span></span><br><span class="line">	c         <span class="comment">// c = 2</span></span><br><span class="line">	d = <span class="number">5</span>     <span class="comment">// d = 5   </span></span><br><span class="line">	e         <span class="comment">// e = 5</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">// 赋值两个常量，iota 只会增长一次，而不会因为使用了两次就增长两次</span></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">	Apple, Banana = <span class="literal">iota</span> + <span class="number">1</span>, <span class="literal">iota</span> + <span class="number">2</span> <span class="comment">// Apple=1 Banana=2</span></span><br><span class="line">	Cherimoya, Durian                  <span class="comment">// Cherimoya=2 Durian=3</span></span><br><span class="line">	Elderberry, Fig                    <span class="comment">// Elderberry=3, Fig=4</span></span><br><span class="line"></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="comment">// 使用 iota 结合 位运算 表示资源状态的使用案例</span></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">	Open = <span class="number">1</span> &lt;&lt; <span class="literal">iota</span>  <span class="comment">// 0001</span></span><br><span class="line">	Close             <span class="comment">// 0010</span></span><br><span class="line">	Pending           <span class="comment">// 0100</span></span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> (</span><br><span class="line">	_           = <span class="literal">iota</span>             <span class="comment">// 使用 _ 忽略不需要的 iota</span></span><br><span class="line">	KB = <span class="number">1</span> &lt;&lt; (<span class="number">10</span> * <span class="literal">iota</span>)          <span class="comment">// 1 &lt;&lt; (10*1)</span></span><br><span class="line">	MB                             <span class="comment">// 1 &lt;&lt; (10*2)</span></span><br><span class="line">	GB                             <span class="comment">// 1 &lt;&lt; (10*3)</span></span><br><span class="line">	TB                             <span class="comment">// 1 &lt;&lt; (10*4)</span></span><br><span class="line">	PB                             <span class="comment">// 1 &lt;&lt; (10*5)</span></span><br><span class="line">	EB                             <span class="comment">// 1 &lt;&lt; (10*6)</span></span><br><span class="line">	ZB                             <span class="comment">// 1 &lt;&lt; (10*7)</span></span><br><span class="line">	YB                             <span class="comment">// 1 &lt;&lt; (10*8)</span></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+<p>当然，常量之所以为常量就是恒定不变的量，因此我们无法在程序运行过程中修改它的值；如果你在代码中试图修改常量的值则会引发编译错误。</p>
+<h1 id="变量"><a href="#变量" class="headerlink" title="变量"></a>变量</h1><h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>声明变量：<code>var identifier type</code></p>
+<p>Go 语言和其他语言不同，在声明变量的时候，将变量的类型放在变量的名称之后。</p>
+<p>当一个变量被声明后，系统自动赋予它该类型的零值：</p>
+<ul>
+<li>int：0</li>
+<li>float：0.0</li>
+<li>bool：false</li>
+<li>string：’’</li>
+<li>指针：nil</li>
+</ul>
+<p>变量的命名应当遵循驼峰命名法。但如果全局变量需要被外部包使用，则应该将首字母也大写。</p>
+<p>作用域：一个变量（常量、类型或函数）在程序中的作用范围。<br>如果一个变量在函数体外声明，则被认为是全局变量；如果在函数体内被声明则称之为局部变量，参数和返回值变量也是局部变量。<br>像 if 和 for 这类控制结构，在这些结构中声明的变脸搞得作用域只在相应的代码块内。<br>一般情况下，局部变量的作用域可以通过代码块判断。</p>
+<p>尽管变量的标识符必须是唯一的，但你可以在某个代码块的内层代码块中使用相同名称的变量，则此时外部的同名变量将会暂时隐藏（结束内部代码块的执行后隐藏的外部同名变量又会出现，而内部同名变量则被释放），你任何的操作都只会影响内部代码块的局部变量。</p>
+<p>变量可以编译期间就被赋值，赋值给变量使用运算符等号 <code>=</code>，当然你也可以在运行时对变量进行赋值操作。</p>
+<p>声明和赋值语句可以组合起来，当然也可以省略类型，因为在编译时会自动该推断类型。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> a = <span class="number">15</span></span><br><span class="line"><span class="keyword">var</span> b = <span class="literal">false</span></span><br><span class="line"><span class="keyword">var</span> str = <span class="string">&quot;Hello World!&quot;</span></span><br></pre></td></tr></table></figure>
+<p>在函数体内声明变量的时候，应该使用简短声明语法<code>:=</code></p>
+<h2 id="打印"><a href="#打印" class="headerlink" title="打印"></a>打印</h2><p>函数 <code>Printf</code> 可以在 fmt 包外部使用，这是因为它以大写字母 P 开头，该函数主要用于打印输出到控制台。通常使用的格式化字符串作为第一个参数：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">Printf</span><span class="params">(format <span class="keyword">string</span>, list of variables to be printed)</span></span></span><br></pre></td></tr></table></figure>
+<p>在示例 4.5 中，格式化字符串为：<code>&quot;The operating system is: %s\n&quot;</code>。</p>
+<p>这个格式化字符串可以含有一个或多个的格式化标识符，例如：<code>%..</code>，其中 <code>..</code> 可以被不同类型所对应的标识符替换，如 <code>%s</code> 代表字符串标识符、<code>%v</code> 代表使用类型的默认输出格式的标识符。这些标识符所对应的值从格式化字符串后的第一个逗号开始按照相同顺序添加，如果参数超过 1 个则同样需要使用逗号分隔。使用这些占位符可以很好地控制格式化输出的文本。</p>
+<p>函数 <code>fmt.Print</code> 和 <code>fmt.Println</code> 会自动使用格式化标识符 <code>%v</code> 对字符串进行格式化，两者都会在每个参数之间自动增加空格，而后者还会在字符串的最后加上一个换行符。</p>
+<h2 id="简短赋值"><a href="#简短赋值" class="headerlink" title="简短赋值"></a>简短赋值</h2><p>只能被用在函数体内，不可用于全局变量的声明与赋值。</p>
+<p>在相同的代码块中，不可以再次对相同名称的变量使用初始化声明。</p>
+<p>声明了局部变量后在其作用域内未使用，会编译错误<code>a declared and not used</code>。</p>
+<p>全局变量允许声明了但不使用。</p>
+<p>同一类型的多个变量可以声明在同一行：<code>var a,b,c int</code>，<code>a, b,c := 1,2,3</code>。</p>
+<p>如果想交换两个变量的值，可以简单地用<code>a, b = b, a</code></p>
+<p>空白标识符<code>_</code>是一个只写变量，你不能得到它的值。作用是：有时候并不需要使用从一个函数中得到的所有返回值，但是所有被声明的变量都必须被使用，所以可以把用不到的返回值赋值给<code>_</code>。</p>
+<h2 id="init-函数"><a href="#init-函数" class="headerlink" title="init 函数"></a>init 函数</h2><p>变量除了可以在全局声明中初始化，也可以在 init 函数中初始化。这是一类非常特殊的函数，它不能够被人为调用，而是在每个包完成初始化后自动执行，并且执行优先级比 main 函数高。</p>
+<p>每个源文件都只能包含一个 init 函数。初始化总是以单线程执行，并且按照包的依赖关系顺序执行。</p>
+<p>一个可能的用途是在开始执行程序之前对数据进行检验或修复，以保证程序状态的正确性。</p>
+<h1 id="基本类型和运算符"><a href="#基本类型和运算符" class="headerlink" title="基本类型和运算符"></a>基本类型和运算符</h1><h2 id="布尔类型-bool"><a href="#布尔类型-bool" class="headerlink" title="布尔类型 bool"></a>布尔类型 bool</h2><p>布尔类型的值只能是常量 true 或 false</p>
+<p>布尔型的常量和变量也可以通过和逻辑运算符（非 <code>!</code>、和 <code>&amp;&amp;</code>、或 <code>||</code>）结合来产生另外一个布尔值</p>
+<p>在格式化输出时，可以使用<code>%t</code>来表示要输出的布尔值</p>
+<p>对于布尔值变量的命名应该以<code>is</code>或<code>Is</code>开头</p>
+<h2 id="数字类型"><a href="#数字类型" class="headerlink" title="数字类型"></a>数字类型</h2><h3 id="整型-int-和浮点型-float"><a href="#整型-int-和浮点型-float" class="headerlink" title="整型 int 和浮点型 float"></a>整型 int 和浮点型 float</h3><p>Go 语言中没有 float 类型。（Go语言中只有 float32 和 float64）没有double类型。</p>
+<p>整数：</p>
+<ul>
+<li>int8（-128 -&gt; 127）</li>
+<li>int16（-32768 -&gt; 32767）</li>
+<li>int32（-2,147,483,648 -&gt; 2,147,483,647）</li>
+<li>int64（-9,223,372,036,854,775,808 -&gt; 9,223,372,036,854,775,807）</li>
+</ul>
+<p>无符号整数：</p>
+<ul>
+<li>uint8（0 -&gt; 255）</li>
+<li>uint16（0 -&gt; 65,535）</li>
+<li>uint32（0 -&gt; 4,294,967,295）</li>
+<li>uint64（0 -&gt; 18,446,744,073,709,551,615）</li>
+</ul>
+<p>浮点型（IEEE-754 标准）：</p>
+<ul>
+<li>float32（+- 1e-45 -&gt; +- 3.4 * 1e38）</li>
+<li>float64（+- 5 * 1e-324 -&gt; 107 * 1e308）</li>
+</ul>
+<p>int 型是计算最快的一种类型。</p>
+<p>可以通过增加前缀 0 来表示 8 进制数（如：077），增加前缀 0x 来表示 16 进制数（如：0xFF），以及使用 e 来表示 10 的连乘（如： 1e3 = 1000，或者 6.022e23 = 6.022 x 1e23）。</p>
+<p>在格式化字符串里，<code>%d</code>用于格式化整数（<code>%x</code> 和 <code>%X</code> 用于格式化 16 进制表示的数字），<code>%g</code> 用于格式化浮点型（<code>%f</code> 输出浮点数，<code>%e</code> 输出科学计数表示法），<code>%0nd</code> 用于规定输出长度为n的整数，其中开头的数字 0 是必须的。</p>
+<h3 id="复数"><a href="#复数" class="headerlink" title="复数"></a>复数</h3><p>Go 拥有以下复数类型：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">complex64 (32 位实数和虚数)</span><br><span class="line">complex128 (64 位实数和虚数)</span><br></pre></td></tr></table></figure>
+<p>函数 <code>real(c)</code> 和 <code>imag(c)</code> 可以分别获得相应的实数和虚数部分。</p>
+<h3 id="位运算"><a href="#位运算" class="headerlink" title="位运算"></a>位运算</h3><p><code>%b</code> 是用于表示位的格式化标识符。</p>
+<p>二元运算符：</p>
+<ul>
+<li>按位与<code>&amp;</code></li>
+<li>按位或<code>|</code></li>
+<li>按位异或<code>^</code></li>
+<li>位清除<code>&amp;^</code>：将指定位置上的值设置为0</li>
+</ul>
+<p>一元运算符：</p>
+<ul>
+<li>按位补足<code>^</code></li>
+<li>位左移<code>&lt;&lt;</code></li>
+<li>位右移<code>&gt;&gt;</code></li>
+</ul>
+<h3 id="逻辑运算符"><a href="#逻辑运算符" class="headerlink" title="逻辑运算符"></a>逻辑运算符</h3><p>Go 中拥有以下逻辑运算符：<code>==</code>、<code>!=</code>、<code>&lt;</code>、<code>&lt;=</code>、<code>&gt;</code>、<code>&gt;=</code>。</p>
+<h3 id="算数运算符"><a href="#算数运算符" class="headerlink" title="算数运算符"></a>算数运算符</h3><p>常见可用于整数和浮点数的二元运算符有 <code>+</code>、<code>-</code>、<code>*</code> 和 <code>/</code>。</p>
+<p><code>/</code> 对于整数运算而言，结果依旧为整数，例如：<code>9 / 4 -&gt; 2</code>。</p>
+<p>取余运算符只能作用于整数：<code>9 % 4 -&gt; 1</code>。</p>
+<p>你可以将语句 <code>b = b + a</code> 简写为 <code>b+=a</code>，同样的写法也可用于 <code>-=</code>、<code>*=</code>、<code>/=</code>、<code>%=</code>。</p>
+<p>对于整数和浮点数，你可以使用一元运算符 <code>++</code>（递增）和 <code>--</code>（递减），但只能用于后缀：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">i++ -&gt; i +&#x3D; 1 -&gt; i &#x3D; i + 1</span><br><span class="line">i-- -&gt; i -&#x3D; 1 -&gt; i &#x3D; i - 1</span><br></pre></td></tr></table></figure>
+<p>同时，带有 <code>++</code> 和 <code>--</code> 的只能作为语句，而非表达式，因此 <code>n = i++</code> 这种写法是无效的，其它像 <code>f(i++)</code> 或者 <code>a[i]=b[i++]</code> 这些可以用于 C、C++ 和 Java 中的写法在 Go 中也是不允许的。</p>
+<h3 id="随机数"><a href="#随机数" class="headerlink" title="随机数"></a>随机数</h3><p><code>rand</code>包实现了伪随机数的生成</p>
+<p>运算符与优先级</p>
+<p>由上至下代表优先级由高到低：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">优先级   运算符</span><br><span class="line"> 7 		^ !</span><br><span class="line"> 6 		* &#x2F; % &lt;&lt; &gt;&gt; &amp; &amp;^</span><br><span class="line"> 5 		+ - | ^</span><br><span class="line"> 4 		&#x3D;&#x3D; !&#x3D; &lt; &lt;&#x3D; &gt;&#x3D; &gt;</span><br><span class="line"> 3 		&lt;-</span><br><span class="line"> 2 		&amp;&amp;</span><br><span class="line"> 1 		||</span><br></pre></td></tr></table></figure>
+<p>当然，你可以通过使用括号来临时提升某个表达式的整体运算优先级。</p>
+<h2 id="类型别名"><a href="#类型别名" class="headerlink" title="类型别名"></a>类型别名</h2><p>当你在使用某个类型时，你可以给它起另一个名字，然后你就可以在你的代码中使用新的名字（用于简化名称或解决名称冲突）。</p>
+<p>在 <code>type TZ int</code> 中，TZ 就是 int 类型的新名称（用于表示程序中的时区），然后就可以使用 TZ 来操作 int 类型的数据。</p>
+<h2 id="字符类型"><a href="#字符类型" class="headerlink" title="字符类型"></a>字符类型</h2><p>严格来说，这并不是 Go 语言的一个类型，字符只是整数的特殊用例。<code>byte</code> 类型是 <code>uint8</code> 的别名，对于只占用 1 个字节的传统 ASCII 编码的字符来说，完全没有问题。例如：<code>var ch byte = &#39;A&#39;</code>；字符使用单引号括起来。</p>
+<p>在 ASCII 码表中，A 的值是 65，而使用 16 进制表示则为 41，所以下面的写法是等效的：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> ch <span class="keyword">byte</span> = <span class="number">65</span> 或 <span class="keyword">var</span> ch <span class="keyword">byte</span> = <span class="string">&#x27;\x41&#x27;</span></span><br></pre></td></tr></table></figure>
+<p>包 <code>unicode</code> 包含了一些针对测试字符的非常有用的函数（其中 <code>ch</code> 代表字符）：</p>
+<ul>
+<li>判断是否为字母：<code>unicode.IsLetter(ch)</code></li>
+<li>判断是否为数字：<code>unicode.IsDigit(ch)</code></li>
+<li>判断是否为空白符号：<code>unicode.IsSpace(ch)</code></li>
+</ul>
+<p>这些函数返回一个布尔值。包 <code>utf8</code> 拥有更多与 rune 类型相关的函数。</p>
+<h2 id="字符串"><a href="#字符串" class="headerlink" title="字符串"></a>字符串</h2><ul>
+<li><p>解释型字符串：<br>该类字符串使用双引号括起来，期中的相关转义字符将被替换，包括：</p>
+<ul>
+<li><code>\n</code> 换行符</li>
+<li><code>\r</code> 回车符</li>
+<li><code>\t</code> tab键</li>
+<li><code>\u</code>或<code>\U</code> Unicode 字符</li>
+<li><code>\\</code> 反斜杠自身</li>
+</ul>
+</li>
+<li><p>非解释型字符串：<br>该类字符串使用反引号括起来，所见即所得，不会被转义</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">`This is a raw string \n`</span>中的 <span class="string">`\n\`</span> 会被原样输出</span><br></pre></td></tr></table></figure>
+<p><code>string</code>类型的零值为长度为零的字符串，即空字符串<code>&quot;&quot;</code></p>
+</li>
+</ul>
+<p>可以通过函数<code>len()</code>来获取字符串所占字节的长度</p>
+<p>字符串内容可以通过<code>[]</code>来获取，索引从 0 开始：</p>
+<ul>
+<li>第一个字节：<code>str[0]</code></li>
+<li>第 i 个字节：<code>str[i-1]</code></li>
+<li>最后一个字节：<code>str[len(str)-1]</code></li>
+</ul>
+<p>字符串拼接：<code>s := s1+s2</code></p>
+<p>在循环中使用<code>+</code>拼接字符串并不是最高效的做法，更好的办法是使用函数<code>strings.join()</code></p>
+<p>Go 中使用<code>strings</code>包来完成对字符串的主要操作</p>
+<h3 id="前缀和后缀"><a href="#前缀和后缀" class="headerlink" title="前缀和后缀"></a>前缀和后缀</h3><p><code>HasPrefix</code> 判断字符串 <code>s</code> 是否以 <code>prefix</code> 开头：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.HasPrefix(s, prefix <span class="keyword">string</span>) <span class="keyword">bool</span></span><br></pre></td></tr></table></figure>
+<p><code>HasSuffix</code> 判断字符串 <code>s</code> 是否以 <code>suffix</code> 结尾：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.HasSuffix(s, suffix <span class="keyword">string</span>) <span class="keyword">bool</span></span><br></pre></td></tr></table></figure>
+<h3 id="字符串包含关系"><a href="#字符串包含关系" class="headerlink" title="字符串包含关系"></a>字符串包含关系</h3><p><code>Contains</code> 判断字符串 <code>s</code> 是否包含 <code>substr</code>：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.Contains(s, substr <span class="keyword">string</span>) <span class="keyword">bool</span></span><br></pre></td></tr></table></figure>
+<h3 id="判断子字符串或字符在父字符串中出现的位置（索引）"><a href="#判断子字符串或字符在父字符串中出现的位置（索引）" class="headerlink" title="判断子字符串或字符在父字符串中出现的位置（索引）"></a>判断子字符串或字符在父字符串中出现的位置（索引）</h3><p><code>Index</code> 返回字符串 <code>str</code> 在字符串 <code>s</code> 中的索引（<code>str</code> 的第一个字符的索引），-1 表示字符串 <code>s</code> 不包含字符串 <code>str</code>：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.Index(s, str <span class="keyword">string</span>) <span class="keyword">int</span></span><br></pre></td></tr></table></figure>
+<p><code>LastIndex</code> 返回字符串 <code>str</code> 在字符串 <code>s</code> 中最后出现位置的索引（<code>str</code> 的第一个字符的索引），-1 表示字符串 <code>s</code> 不包含字符串 <code>str</code>：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.LastIndex(s, str <span class="keyword">string</span>) <span class="keyword">int</span></span><br></pre></td></tr></table></figure>
+<h3 id="字符串替换"><a href="#字符串替换" class="headerlink" title="字符串替换"></a>字符串替换</h3><p><code>Replace</code> 用于将字符串 <code>str</code> 中的前 <code>n</code> 个字符串 <code>old</code> 替换为字符串 <code>new</code>，并返回一个新的字符串，如果 <code>n = -1</code> 则替换所有字符串 <code>old</code> 为字符串 <code>new</code>：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.Replace(str, old, <span class="built_in">new</span>, n) <span class="keyword">string</span></span><br></pre></td></tr></table></figure>
+<h3 id="统计字符串出现次数"><a href="#统计字符串出现次数" class="headerlink" title="统计字符串出现次数"></a>统计字符串出现次数</h3><p><code>Count</code> 用于计算字符串 <code>str</code> 在字符串 <code>s</code> 中出现的非重叠次数：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.Count(s, str <span class="keyword">string</span>) <span class="keyword">int</span></span><br></pre></td></tr></table></figure>
+<h3 id="重复字符串"><a href="#重复字符串" class="headerlink" title="重复字符串"></a>重复字符串</h3><p><code>Repeat</code>用于重复<code>count</code>次字符串<code>s</code>并返回一个新的字符串</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.Repeat(s, count <span class="keyword">int</span>) <span class="keyword">string</span></span><br></pre></td></tr></table></figure>
+<h3 id="修改大小写"><a href="#修改大小写" class="headerlink" title="修改大小写"></a>修改大小写</h3><p><code>ToLower</code> 将字符串中的 Unicode 字符全部转换为相应的小写字符：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.ToLower(s) <span class="keyword">string</span></span><br></pre></td></tr></table></figure>
+<p><code>ToUpper</code> 将字符串中的 Unicode 字符全部转换为相应的大写字符：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.ToUpper(s) <span class="keyword">string</span></span><br></pre></td></tr></table></figure>
+<h3 id="修剪字符串"><a href="#修剪字符串" class="headerlink" title="修剪字符串"></a>修剪字符串</h3><p>你可以使用 <code>strings.TrimSpace(s)</code> 来剔除字符串开头和结尾的空白符号；如果你想要剔除指定字符，则可以使用 <code>strings.Trim(s, &quot;cut&quot;)</code> 来将开头和结尾的 <code>cut</code> 去除掉。该函数的第二个参数可以包含任何字符，如果你只想剔除开头或者结尾的字符串，则可以使用 <code>TrimLeft</code> 或者 <code>TrimRight</code> 来实现。</p>
+<h3 id="分割字符串"><a href="#分割字符串" class="headerlink" title="分割字符串"></a>分割字符串</h3><p><code>strings.Fields(s)</code> 将会利用 1 个或多个空白符号来作为动态长度的分隔符将字符串分割成若干小块，并返回一个 slice，如果字符串只包含空白符号，则返回一个长度为 0 的 slice。</p>
+<p><code>strings.Split(s, sep)</code> 用于自定义分割符号来对指定字符串进行分割，同样返回 slice。</p>
+<p>因为这 2 个函数都会返回 slice，所以习惯使用 for-range 循环来对其进行处理</p>
+<p>类似 Python 里的<code>split()</code>函数</p>
+<h3 id="拼接-slice-到字符串"><a href="#拼接-slice-到字符串" class="headerlink" title="拼接 slice 到字符串"></a>拼接 slice 到字符串</h3><p><code>Join</code> 用于将元素类型为 string 的 slice 使用分割符号来拼接组成一个字符串：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">strings.Join(sl []<span class="keyword">string</span>, sep <span class="keyword">string</span>) <span class="keyword">string</span></span><br></pre></td></tr></table></figure>
+<h3 id="从字符串中读取内容"><a href="#从字符串中读取内容" class="headerlink" title="从字符串中读取内容"></a>从字符串中读取内容</h3><p>函数 <code>strings.NewReader(str)</code> 用于生成一个 <code>Reader</code> 并读取字符串中的内容，然后返回指向该 <code>Reader</code> 的指针，从其它类型读取内容的函数还有：</p>
+<ul>
+<li><code>Read()</code> 从 []byte 中读取内容。</li>
+<li><code>ReadByte()</code> 和 <code>ReadRune()</code> 从字符串中读取下一个 byte 或者 rune。</li>
+</ul>
+<blockquote>
+<p>看不懂，后面再说</p>
+</blockquote>
+<h3 id="字符串与其他类型的转换"><a href="#字符串与其他类型的转换" class="headerlink" title="字符串与其他类型的转换"></a>字符串与其他类型的转换</h3><p>与字符串相关的类型转换都是通过 <code>strconv</code> 包实现的。</p>
+<p>任何类型 <strong>T</strong> 转换为字符串总是成功的。</p>
+<p>将字符串转换为其它类型 <strong>tp</strong> 并不总是可能的，可能会在运行时抛出错误 <code>parsing &quot;…&quot;: invalid argument</code>。</p>
+<p>数字类型 -&gt; 字符串：</p>
+<ul>
+<li><code>strconv.Itoa(i int) string</code> 返回数字 i 所表示的字符串类型的十进制数。</li>
+<li><code>strconv.FormatFloat(f float64, fmt byte, prec int, bitSize int) string</code> 将 64 位浮点型的数字转换为字符串，其中 <code>fmt</code> 表示格式（其值可以是 <code>&#39;b&#39;</code>、<code>&#39;e&#39;</code>、<code>&#39;f&#39;</code> 或 <code>&#39;g&#39;</code>），<code>prec</code> 表示精度，<code>bitSize</code> 则使用 32 表示 float32，用 64 表示 float64。</li>
+</ul>
+<p>字符串 -&gt; 数字类型：</p>
+<ul>
+<li><code>strconv.Atoi(s string) (i int, err error)</code> 将字符串转换为 int 型。</li>
+<li><code>strconv.ParseFloat(s string, bitSize int) (f float64, err error)</code> 将字符串转换为 float64 型。</li>
+</ul>
+<p>利用多返回值的特性，这些函数会返回 2 个值，第 1 个是转换后的结果（如果转换成功），第 2 个是可能出现的错误，因此，我们一般使用以下形式来进行从字符串到其它类型的转换：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">val, err = strconv.Atoi(s)</span><br></pre></td></tr></table></figure>
+<h1 id="数组"><a href="#数组" class="headerlink" title="数组"></a>数组</h1><h2 id="数组的声明和初始化"><a href="#数组的声明和初始化" class="headerlink" title="数组的声明和初始化"></a>数组的声明和初始化</h2><p>在 Go 语言中，可以通过<code>[]</code>来标识数组，但需要指定长度和元素类型。以下是一些常见的数组声明方法：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> a [<span class="number">8</span>]<span class="keyword">byte</span> <span class="comment">// 长度为8的数组，每个元素为一个字节</span></span><br><span class="line"><span class="keyword">var</span> b [<span class="number">3</span>][<span class="number">3</span>]<span class="keyword">int</span> <span class="comment">// 二维数组（9宫格）</span></span><br><span class="line"><span class="keyword">var</span> c [<span class="number">3</span>][<span class="number">3</span>][<span class="number">3</span>]<span class="keyword">float64</span> <span class="comment">// 三维数组（立体的9宫格）</span></span><br><span class="line"><span class="keyword">var</span> d = [<span class="number">3</span>]<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>&#125;  <span class="comment">// 声明时初始化</span></span><br><span class="line"><span class="keyword">var</span> e = <span class="built_in">new</span>([<span class="number">3</span>]<span class="keyword">string</span>)   <span class="comment">// 通过 new 初始化</span></span><br><span class="line">f := [<span class="number">5</span>]<span class="keyword">int</span>&#123;<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>,<span class="number">4</span>,<span class="number">5</span>&#125; <span class="comment">// 通过 := 初始化</span></span><br></pre></td></tr></table></figure>
+<p>总结一下，数组的格式定义如下所示：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[capacity]date_type&#123;element_value&#125;</span><br></pre></td></tr></table></figure>
+<p>此外，还可以通过这种语法糖省略数组长度的声明，此时会在编译期自动计算数组长度：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">a := [...]<span class="keyword">int</span>&#123;<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>&#125;</span><br></pre></td></tr></table></figure>
+<p>数组在初始化的时候，如果没有被填满，则空位通过对应的元素类型进行零值填充：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">a := [<span class="number">5</span>]<span class="keyword">int</span>&#123;<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>&#125;</span><br><span class="line">fmt.Print(<span class="number">1</span>) <span class="comment">// [1 2 3 0 0]</span></span><br></pre></td></tr></table></figure>
+<p>此外，我们还可以初始化指定下标位置的元素值，未设置的位置也会以对应元素类型的零值填充：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">a := [<span class="number">5</span>]<span class="keyword">int</span>&#123;<span class="number">1</span>:<span class="number">3</span>, <span class="number">3</span>:<span class="number">7</span>&#125; <span class="comment">// [0 3 0 0 7]</span></span><br></pre></td></tr></table></figure>
+<p>数组的长度在声明后不可更改，在声明时可以指定数组长度为一个常量或者一个常量表达式。数组的长度是该数组类型的一个内置常量，可以用<code>len()</code>来获取</p>
+<h2 id="数组元素的访问和设置"><a href="#数组元素的访问和设置" class="headerlink" title="数组元素的访问和设置"></a>数组元素的访问和设置</h2><p>可以使用数组下标来访问 Go 数组中的元素，数组的下标从 0 开始，<code>len(arr) - 1</code>表示最后一个元素的下标。</p>
+<p>和字符串这种不可变值类型不一样，数组除了支持通过下标访问对应索引的元素值之外，还可以通过下标设置对应索引位置的元素值。</p>
+<h2 id="遍历数组"><a href="#遍历数组" class="headerlink" title="遍历数组"></a>遍历数组</h2><p>可以通过一个 for 循环遍历所有数组：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="built_in">len</span>(arr); i++ &#123;</span><br><span class="line">    fmt.Println(<span class="string">&quot;Element&quot;</span>, i, <span class="string">&quot;of arr is&quot;</span>, arr[i])</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>Go 语言还提供了一个关键字<code>range</code>，用于更优雅地遍历数组：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> i, v := <span class="keyword">range</span> arr &#123;</span><br><span class="line">    fmt.Println(<span class="string">&quot;Elemnt&quot;</span>, i, <span class="string">&quot;of arr is&quot;</span>, v)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>range</code>表达式返回两个值，第一个是数组下标索引值，第二个是索引对应数组元素值。</p>
+<p>如果不想获取索引值，可以：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> _, v := <span class="keyword">range</span> arr &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果只想获取索引值而不需要元素值，可以：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> i := <span class="keyword">range</span> arr &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="多维数组"><a href="#多维数组" class="headerlink" title="多维数组"></a>多维数组</h2><p>多维数组的操作与一维数组一样，只不过每个元素可能是个数组，在进行循环遍历的时候需要多层嵌套循环。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 通过二维数组生成九九乘法表</span></span><br><span class="line"><span class="keyword">var</span> multi [<span class="number">9</span>][<span class="number">9</span>]<span class="keyword">string</span></span><br><span class="line"><span class="keyword">for</span> j := <span class="number">0</span>; j &lt; <span class="number">9</span>; j++ &#123;</span><br><span class="line">    <span class="keyword">for</span> i := <span class="number">0</span>; i &lt; <span class="number">9</span>; i++ &#123;</span><br><span class="line">            n1 := i + <span class="number">1</span></span><br><span class="line">            n2 := j + <span class="number">1</span></span><br><span class="line">            <span class="keyword">if</span> n1 &lt; n2 &#123;  <span class="comment">// 摒除重复的记录</span></span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line">            &#125;</span><br><span class="line">            multi[i][j] = fmt.Sprintf(<span class="string">&quot;%dx%d=%d&quot;</span>, n2, n1, n1 * n2)</span><br><span class="line">        &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 打印九九乘法表</span></span><br><span class="line"><span class="keyword">for</span> _, v1 := <span class="keyword">range</span> multi &#123;</span><br><span class="line">    <span class="keyword">for</span> _, v2 := <span class="keyword">range</span> v1 &#123;</span><br><span class="line">        fmt.Printf(<span class="string">&quot;%-8s&quot;</span>, v2)  <span class="comment">// 位宽为8，左对齐</span></span><br><span class="line">    &#125;</span><br><span class="line">    fmt.Println()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="数组类型的不足"><a href="#数组类型的不足" class="headerlink" title="数组类型的不足"></a>数组类型的不足</h2><p>由于数组类型变量一旦声明后长度就固定了，这意味着我们将不能动态添加元素到数组，如果要这么做的话，就需要先创建一个更大的数组，然后复制久的数组，最后再添加新的元素。如果数组尺寸很大的话，势必会影响程序性能。</p>
+<p>另外，数组是值类型，这意味着作为参数传递到函数时，传递的是数组的值的拷贝，也就是说，会先将数组拷贝给形参，然后在函数体中引用的是形参而不是原来的数组，当我们在函数中对数组元素进行修改时，并不会影响原来的数组。这种机制带来的另一个负面影响是当数组很大时，值拷贝会降低程序性能。</p>
+<p>综合以上因素，我们需要一个引用类型的、支持动态添加元素的新类型，这就是切片类型。</p>
+<p>实际上，在 Go 语言中很少使用数组，大多数时候我们都会使用切片来取代它。</p>
+<h1 id="切片"><a href="#切片" class="headerlink" title="切片"></a>切片</h1><p>在 Go 语言中，切片是一个新的数据类型，与数组最大的不同在于，切片类型字面量中只有元素类型，没有长度：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> slice []<span class="keyword">string</span> = []<span class="keyword">string</span>&#123;<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>, <span class="string">&quot;c&quot;</span>&#125;</span><br></pre></td></tr></table></figure>
+<p>因此它是一个长度可变、同一类型元素集合，切片的长度可以随着元素数量的增长而增长（但不会随着元素数量的减少而减少）。切片从底层管理上来看依然使用了数组来管理元素，可以看作是对数组做了一层简单的封装。基于数组，切片添加了一系列管理功能，可以随时动态扩充存储空间。</p>
+<h2 id="创建切片"><a href="#创建切片" class="headerlink" title="创建切片"></a>创建切片</h2><p>创建切片的方法主要有三种——基于数组、切片和直接创建。</p>
+<h3 id="基于数组"><a href="#基于数组" class="headerlink" title="基于数组"></a>基于数组</h3><p>切片可以基于一个已存在的数组创建。从这个层面来说，数组可以看作是切片的底层数组，而切片可以看作是数组某个连续片段的引用。切片可以只使用数组的一部分元素或者整个数组来创建，甚至可以创建一个比所基于的数组还要大的切片。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 先定义一个数组</span></span><br><span class="line">months := [...]<span class="keyword">string</span>&#123;<span class="string">&quot;January&quot;</span>, <span class="string">&quot;February&quot;</span>, <span class="string">&quot;March&quot;</span>, <span class="string">&quot;April&quot;</span>, <span class="string">&quot;May&quot;</span>, <span class="string">&quot;June&quot;</span>, <span class="string">&quot;July&quot;</span>, <span class="string">&quot;August&quot;</span>, <span class="string">&quot;September&quot;</span>, <span class="string">&quot;October&quot;</span>, <span class="string">&quot;November&quot;</span>, <span class="string">&quot;December&quot;</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 基于数组创建切片</span></span><br><span class="line">q2 := months[<span class="number">3</span>:<span class="number">6</span>]    <span class="comment">// 第二季度</span></span><br><span class="line">summer := months[<span class="number">5</span>:<span class="number">8</span>]  <span class="comment">// 夏季</span></span><br><span class="line"></span><br><span class="line">fmt.Println(q2)</span><br><span class="line">fmt.Println(summer)  </span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">运行结果</span></span><br><span class="line"><span class="comment">[April May June]</span></span><br><span class="line"><span class="comment">[June July August]</span></span><br><span class="line"><span class="comment">*/</span></span><br></pre></td></tr></table></figure>
+<p>Go 语言支持通过<code>array[start:end]</code>这样的方式基于数组生成一个切片，<code>start</code>表示切片在数组中的下标起点，<code>end</code>表示切片在数组中的下标终点，两者之间的元素就是切片初始化后的元素集合。下面集中用法也是合法的：</p>
+<ul>
+<li><p>基于<code>months</code>的所有元素创建切片<code>all := months[:]</code></p>
+</li>
+<li><p>基于<code>months</code>的前6个元素创建切片<code>firsthalf := months[:6]</code></p>
+</li>
+<li><p>基于后6个元素创建切片<code>secondhalf := months[6:]</code></p>
+</li>
+</ul>
+<p>切片底层引用了一个数组，由三个部分构成——指针、长度和容量，指针指向数组起始下标，长度对应切片中元素的个数，容量则是切片起始位置到底层数组结尾的位置：</p>
+<p><img src="https://tcs.teambition.net/storage/312285de2b9604d5aa78129c13c608b3713e?Signature=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcHBJRCI6IjU5Mzc3MGZmODM5NjMyMDAyZTAzNThmMSIsIl9hcHBJZCI6IjU5Mzc3MGZmODM5NjMyMDAyZTAzNThmMSIsIl9vcmdhbml6YXRpb25JZCI6IiIsImV4cCI6MTYxNDQ3NTIxNSwiaWF0IjoxNjEzODcwNDE1LCJyZXNvdXJjZSI6Ii9zdG9yYWdlLzMxMjI4NWRlMmI5NjA0ZDVhYTc4MTI5YzEzYzYwOGIzNzEzZSJ9.zIy2_w8JDyQkNRTjIksrvNnGIMijp8OdIb6cXB2ZCNE&download=blob.jpeg" alt="img"></p>
+<p>切片长度不能超过容量，和数组一样，我们可以通过内置函数<code>len</code>获取切片的长度，此外还可以通过<code>cap</code>获取切片容量。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">fmt.Println(<span class="built_in">len</span>(q2)) <span class="comment">// 3</span></span><br><span class="line">fmt.Println(<span class="built_in">cap</span>(q2)) <span class="comment">// 9</span></span><br></pre></td></tr></table></figure>
+<h3 id="基于切片"><a href="#基于切片" class="headerlink" title="基于切片"></a>基于切片</h3><p>类似切片可以基于一个数组创建，切片也可以基于另一个切片创建：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">firsthalf := months[:<span class="number">6</span>]</span><br><span class="line">q1 := firsthalf[:<span class="number">3</span>] <span class="comment">// 基于 firsthalf 的前 3 个元素构建新切片</span></span><br></pre></td></tr></table></figure>
+<p>基于切片创建切片时，选择的范围可以超过原切片所包含的元素个数，只要选择的范围不超过原切片的容量就是合法的。所以，基于切片创建切片，其本质还是基于数组。</p>
+<h3 id="直接创建"><a href="#直接创建" class="headerlink" title="直接创建"></a>直接创建</h3><p>并非一定要事先准备一个数组才能创建切片，Go 语言提供的内置函数<code>make()</code>可以用于灵活地创建切片。</p>
+<p>创建一个初始长度为 5 的整型切片：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mySlice1 := <span class="built_in">make</span>([]<span class="keyword">int</span>, <span class="number">5</span>)</span><br></pre></td></tr></table></figure>
+<p>创建一个初始长度为 5，容量为 10 的整型切片：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mySlice2 := <span class="built_in">make</span>([]<span class="keyword">int</span>, <span class="number">5</span>, <span class="number">10</span>)</span><br></pre></td></tr></table></figure>
+<p>直接创建并初始化包含 5 个元素的数组切片（长度和容量均为 5）：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mySlice3 := []<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;</span><br></pre></td></tr></table></figure>
+<p>和数组一样，所有未初始化的切片，会自动填充元素类型对应的零值。</p>
+<p>事实上，使用直接创建的方式来创建切片时，Go 底层还是会有一个匿名数组被创建出来，然后调用基于数组创建切片的方式返回切片，只是上层不需要关心这个匿名数组的操作而已。所以，最终切片都是基于数组创建的，切片可以看做是操作数组的指针。</p>
+<h2 id="遍历切片"><a href="#遍历切片" class="headerlink" title="遍历切片"></a>遍历切片</h2><p>由于切片可以看作是是数组指针，因此，操作数组元素的所有方法都适用于切片，比如切片也可以按下标读写元素，用 <code>len()</code> 函数获取元素个数，并支持使用 <code>range</code> 关键字来快速遍历所有元素。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 传统遍历方法</span></span><br><span class="line"><span class="keyword">for</span> i:=<span class="number">0</span>; i&lt;<span class="built_in">len</span>(summer); i++ &#123;</span><br><span class="line">    fmt.Println(summer[i])</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 使用 range 关键字</span></span><br><span class="line"><span class="keyword">for</span> _, v := <span class="keyword">range</span> summer &#123;</span><br><span class="line">    fmt.Println(v)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="动态增加元素"><a href="#动态增加元素" class="headerlink" title="动态增加元素"></a>动态增加元素</h2><p>切片比数组更强大之处在于支持动态增加元素，甚至可以在容量不足的情况下自动扩容。在切片类型中，元素个数和实际可分配的存储空间是两个不同的值，元素的个数即切片的实际长度，而可分配的存储空间就是切片的容量。</p>
+<p>一个切片的容量初始值根据创建方式的不同而不同：</p>
+<ul>
+<li><p>对于基于数组和切片创建的切片而言，默认容量是从切片起始索引到对应底层数组的结尾索引；</p>
+</li>
+<li><p>对于通过内置 <code>make</code> 函数创建的切片而言，在没有指定容量参数的情况下，默认容量和切片长度一致。</p>
+</li>
+</ul>
+<p>所以，通常一个切片的长度小于等于其容量值，我们可以通过<code>cap()</code>和<code>len()</code>函数来获取某个切片的容量和实际长度。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> oldSlice = <span class="built_in">make</span>([]<span class="keyword">int</span>, <span class="number">5</span>, <span class="number">10</span>)</span><br><span class="line">fmt.Println(<span class="built_in">len</span>(oldSlice)) <span class="comment">// 5</span></span><br><span class="line">fmt.Println(<span class="built_in">cap</span>(oldSlice)) <span class="comment">// 10</span></span><br></pre></td></tr></table></figure>
+<p>此时，切片<code>oldSlice</code>的默认值是<code>[0 0 0 0 0]</code>，我们可以通过<code>append()</code>函数向切片追加新元素：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">newSlice := <span class="built_in">append</span>(oldSlice, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>)</span><br></pre></td></tr></table></figure>
+<p>此时<code>newSlice</code>的长度是 8，容量是 10，切片值是<code>[0 0 0 0 0 1 2 3]</code>。函数<code>append()</code>的第二个参数是一个补丁参数，我们可以按照自己的需求添加若干个元素（大于等于 1 个），甚至直接将一个切片追加到另一个切片的末尾：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">appendSlice := []<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;</span><br><span class="line">newSlice := <span class="built_in">append</span>(oldSlice, appendSlice...) <span class="comment">// 注意末尾的 ... 不能省略</span></span><br></pre></td></tr></table></figure>
+<h2 id="自动扩容"><a href="#自动扩容" class="headerlink" title="自动扩容"></a>自动扩容</h2><p>如果追加的元素个数超出<code>oldSlice</code>的默认容量，则底层会自动进行扩容：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">newSlice := <span class="built_in">append</span>(oldSlice, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>)</span><br><span class="line">fmt.Println(newSlice)</span><br><span class="line">fmt.Println(<span class="built_in">len</span>(newSlice))</span><br><span class="line">fmt.Println(<span class="built_in">cap</span>(newSlice))</span><br></pre></td></tr></table></figure>
+<p>此时 <code>newSlice</code> 的长度变成了 11，容量变成了 20，需要注意的是 <code>append()</code> 函数并不会改变原来的切片，而是会生成一个容量更大的切片，然后把原有的元素和新元素一并拷贝到新切片中。</p>
+<p>默认情况下，扩容后新切片的容量将会是原切片容量的 2 倍，如果还不足以容纳新元素，则按照同样的操作继续扩容，直到新容量不小于原长度与要追加的元素数量之和。但是，当原切片的长度大于或等于 1024 时，Go 语言将会以原容量的 1.25 倍作为新容量的基准。</p>
+<p>因此，如果事先能预估切片的容量并在初始化时合理地设置容量值，可以大幅降低切片内部重新分配内存和搬送内存块的操作次数，从而提高程序性能。</p>
+<h2 id="内容复制"><a href="#内容复制" class="headerlink" title="内容复制"></a>内容复制</h2><p>切片类型还支持另一个内置函数<code>copy()</code>，用于将元素从一个切片复制到另一个切片。如果两个切片不一样大，就会按照其中较小的那个切片的元素个数进行复制。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">slice1 := []<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125; </span><br><span class="line">slice2 := []<span class="keyword">int</span>&#123;<span class="number">5</span>, <span class="number">4</span>, <span class="number">3</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 复制 slice1 到 slice 2</span></span><br><span class="line"><span class="built_in">copy</span>(slice2, slice1) <span class="comment">// 只会复制 slice1 的前 3 个元素到 slice2 中</span></span><br><span class="line"><span class="comment">// slice2 结果: [1, 2, 3]</span></span><br><span class="line"><span class="comment">// 复制 slice2 到 slice 1</span></span><br><span class="line"><span class="built_in">copy</span>(slice1, slice2) <span class="comment">// 只会复制 slice2 的 3 个元素到 slice1 的前 3 个位置</span></span><br><span class="line"><span class="comment">// slice1 结果：[5, 4, 3, 4, 5]</span></span><br></pre></td></tr></table></figure>
+<h2 id="动态删除元素"><a href="#动态删除元素" class="headerlink" title="动态删除元素"></a>动态删除元素</h2><p>切片除了支持动态增加元素之外，还可以动态删除元素，在切片中动态删除元素可以通过多种方式实现（其实是通过切片的切片实现的「伪删除」）：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">slice3 := []<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>, <span class="number">10</span>&#125;</span><br><span class="line">slice3 = slice3[:<span class="built_in">len</span>(slice3) - <span class="number">5</span>]  <span class="comment">// 删除 slice3 尾部 5 个元素</span></span><br><span class="line">slice3 = slice3[<span class="number">5</span>:]  <span class="comment">// 删除 slice3 头部 5 个元素</span></span><br></pre></td></tr></table></figure>
+<p>此时切片 <code>slice3</code> 的所有元素被删除，长度是0，容量也变成 5，注意这里不是自动缩容，而是第二个切片容量计算逻辑决定的。此外，还可以通过上述介绍的 <code>append</code> 函数和 <code>copy</code> 函数实现切片元素的「删除」：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">slice3 := []<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>, <span class="number">10</span>&#125;</span><br><span class="line"></span><br><span class="line">slice4 := <span class="built_in">append</span>(slice3[:<span class="number">0</span>], slice3[<span class="number">3</span>:]...)  <span class="comment">// 删除开头三个元素</span></span><br><span class="line">slice5 := <span class="built_in">append</span>(slice3[:<span class="number">1</span>], slice3[<span class="number">4</span>:]...)  <span class="comment">// 删除中间三个元素</span></span><br><span class="line">slice6 := <span class="built_in">append</span>(slice3[:<span class="number">0</span>], slice3[:<span class="number">7</span>]...)  <span class="comment">// 删除最后三个元素</span></span><br><span class="line">slice7 := slice3[:<span class="built_in">copy</span>(slice3, slice3[<span class="number">3</span>:])]  <span class="comment">// 删除开头前三个元素</span></span><br></pre></td></tr></table></figure>
+<p><code>append</code> 相对好理解一些，<code>copy</code> 之所以可以用于删除元素，是因为其返回值是拷贝成功的元素个数，我们可以根据这个值完成新切片的设置从而达到「删除」元素的效果。</p>
+<p>和动态增加元素一样，原切片的值并没有变动，而是创建出一个新的内存空间来存放新切片并将其赋值给其它变量。</p>
+<h2 id="数据共享问题"><a href="#数据共享问题" class="headerlink" title="数据共享问题"></a>数据共享问题</h2><p>切片的底层是基于数组实现的，对应的结构体对象如下：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">type</span> slice <span class="keyword">struct</span> &#123;</span><br><span class="line">    array unsafe.Pointer <span class="comment">//指向存放数据的数组指针</span></span><br><span class="line">    <span class="built_in">len</span>   <span class="keyword">int</span>            <span class="comment">//长度有多大</span></span><br><span class="line">    <span class="built_in">cap</span>   <span class="keyword">int</span>            <span class="comment">//容量有多大</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在结构体中使用指针存在不同实例的数据共享问题，比如：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">slice1 := []<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>&#125;</span><br><span class="line"></span><br><span class="line">slice2 := slice1[<span class="number">1</span>:<span class="number">3</span>]</span><br><span class="line">slice2[<span class="number">1</span>] = <span class="number">6</span></span><br><span class="line"></span><br><span class="line">fmt.Println(<span class="string">&quot;slice1:&quot;</span>, slice1)</span><br><span class="line">fmt.Println(<span class="string">&quot;slice2:&quot;</span>, slice2)</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">结果</span></span><br><span class="line"><span class="comment">slice1: [1 2 6 4 5]</span></span><br><span class="line"><span class="comment">slice2: [2 6]</span></span><br><span class="line"><span class="comment">*/</span></span><br></pre></td></tr></table></figure>
+<p>可以看到，<code>slice2</code> 是基于 <code>slice1</code> 创建的，它们的数组指针指向了同一个数组，因此，修改 <code>slice2</code> 元素会同步到 <code>slice1</code>，因为修改的是同一份内存数据，这就是数据共享问题。</p>
+<h3 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">slice1 := <span class="built_in">make</span>([]<span class="keyword">int</span>, <span class="number">4</span>)</span><br><span class="line">slice2 := slice1[<span class="number">1</span>:<span class="number">3</span>]</span><br><span class="line">slice1 = <span class="built_in">append</span>(slice1, <span class="number">0</span>)</span><br><span class="line">slice1[<span class="number">1</span>] = <span class="number">2</span></span><br><span class="line">slice2[<span class="number">1</span>] = <span class="number">6</span></span><br><span class="line"></span><br><span class="line">fmt.Println(<span class="string">&quot;slice1:&quot;</span>, slice1)</span><br><span class="line">fmt.Println(<span class="string">&quot;slice2:&quot;</span>, slice2)</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">结果</span></span><br><span class="line"><span class="comment">slice1: [0 2 0 0 0]</span></span><br><span class="line"><span class="comment">slice2: [0 6]</span></span><br><span class="line"><span class="comment">*/</span></span><br></pre></td></tr></table></figure>
+<p>可以看到，虽然 <code>slice2</code> 是基于 <code>slice1</code> 创建的，但是修改 <code>slice2</code> 不会再同步到 <code>slice1</code>，因为 <code>append</code> 函数会重新分配新的内存，然后将结果赋值给 <code>slice1</code>，这样一来，<code>slice2</code> 会和老的 <code>slice1</code> 共享同一个底层数组内存，不再和新的 <code>slice1</code> 共享内存，也就不存在数据共享问题了。</p>
+<blockquote>
+<p>对于不支持指针的语言，比如 PHP，类似问题就是引用对象共享，在涉及到引用对象属性的复合对象集合遍历时，很多初学者可能都遇到过这个问题，其实就是浅拷贝导致的不同对象引用了同一个对象属性，要解决这个问题，需要通过深拷贝将对象及嵌套引用的对象重新克隆一份出来，避免内存共享。</p>
+</blockquote>
+<p>但是这里有个需要注意的地方，就是一定要重新分配内存空间，如果没有重新分配，依然存在数据共享问题：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">slice1 := <span class="built_in">make</span>([]<span class="keyword">int</span>, <span class="number">4</span>, <span class="number">5</span>)</span><br><span class="line">slice2 := slice1[<span class="number">1</span>:<span class="number">3</span>]</span><br><span class="line">slice1 = <span class="built_in">append</span>(slice1, <span class="number">0</span>)</span><br><span class="line">slice1[<span class="number">1</span>] = <span class="number">2</span></span><br><span class="line">slice2[<span class="number">1</span>] = <span class="number">6</span></span><br><span class="line"></span><br><span class="line">fmt.Println(<span class="string">&quot;slice1:&quot;</span>, slice1)</span><br><span class="line">fmt.Println(<span class="string">&quot;slice2:&quot;</span>, slice2)</span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">结果</span></span><br><span class="line"><span class="comment">slice1: [0 2 6 0 0]</span></span><br><span class="line"><span class="comment">slice2: [2 6]</span></span><br><span class="line"><span class="comment">*/</span></span><br></pre></td></tr></table></figure>
+<p>可以看到这里就发生了数据共享问题，因为初始化的容量是 5，比长度大，执行<code>append</code> 的时候没有进行扩容，也就不存在重新分配内存操作。</p>
+<h1 id="字典"><a href="#字典" class="headerlink" title="字典"></a>字典</h1><h2 id="字典声明和初始化"><a href="#字典声明和初始化" class="headerlink" title="字典声明和初始化"></a>字典声明和初始化</h2><p>所谓字典，其实就是存储键值对映射关系的集合，只不过对于强类型的 Go 语言来说，需要在声明时指定键和值的类型。</p>
+<p>Go 字典是无序集合，底层不会按照元素的添加顺序维护元素的存储顺序。</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> testMap <span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">int</span></span><br><span class="line">testMap = <span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">int</span>&#123;</span><br><span class="line">  <span class="string">&quot;one&quot;</span>: <span class="number">1</span>,</span><br><span class="line">  <span class="string">&quot;two&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;three&quot;</span>: <span class="number">3</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">k := <span class="string">&quot;two&quot;</span></span><br><span class="line">v, ok := testMap[k]</span><br><span class="line"><span class="keyword">if</span> ok &#123;</span><br><span class="line">  fmt.Printf(<span class="string">&quot;The element of key %q: %d\n&quot;</span>, k, v)</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  fmt.Println(<span class="string">&quot;Not found!&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="字典声明"><a href="#字典声明" class="headerlink" title="字典声明"></a>字典声明</h2><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> testMap <span class="keyword">map</span>[<span class="keyword">string</span>] <span class="keyword">int</span></span><br></pre></td></tr></table></figure>
+<p>其中，<code>testMap</code> 是声明的字典变量名，<code>string</code> 是键的类型，<code>int</code> 则是其中所存放的值类型。</p>
+<h2 id="字典初始化"><a href="#字典初始化" class="headerlink" title="字典初始化"></a>字典初始化</h2><p>我们可以通过先声明再初始化的方式进行初始化，就像上面示例代码做的那样，也可以通过 <code>:=</code> 将声明和初始化合并为一条语句：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">testMap := <span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">int</span>&#123;</span><br><span class="line">  <span class="string">&quot;one&quot;</span>: <span class="number">1</span>,</span><br><span class="line">  <span class="string">&quot;two&quot;</span>: <span class="number">2</span>,</span><br><span class="line">  <span class="string">&quot;three&quot;</span>: <span class="number">3</span>,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>前面我们提到 Go 字典是个无序集合，所以如果我们通过 <code>fmt.Println(testMap)</code> 打印 <code>testMap</code> 的值，得到的可能是下面这样的结果：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">map</span>[one:<span class="number">1</span> three:<span class="number">3</span> two:<span class="number">2</span>]</span><br></pre></td></tr></table></figure>
+<p>此外，还可以像切片那样，通过 Go 语言内置的函数 <code>make()</code> 来初始化一个新字典：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> testMap = <span class="built_in">make</span>(<span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">int</span>)</span><br></pre></td></tr></table></figure>
+<p>通过这种方式初始化后，可以往字典中添加键值对（前面那种声明方式不能这么操作，否则编译期间会抛出 panic）：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">testMap[<span class="string">&quot;one&quot;</span>] = <span class="number">1</span></span><br><span class="line">testMap[<span class="string">&quot;two&quot;</span>] = <span class="number">2</span></span><br><span class="line">testMap[<span class="string">&quot;three&quot;</span>] = <span class="number">3</span></span><br></pre></td></tr></table></figure>
+<p>还可以通过<code>make</code>函数的第二个参数选择是否在创建时指定该字典的初始存储容量（超出会自动扩容）:</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">testMap = <span class="built_in">make</span>(<span class="keyword">map</span>[<span class="keyword">string</span>]<span class="keyword">int</span>, <span class="number">100</span>)</span><br></pre></td></tr></table></figure>
+<h2 id="使用入门"><a href="#使用入门" class="headerlink" title="使用入门"></a>使用入门</h2><h3 id="元素赋值"><a href="#元素赋值" class="headerlink" title="元素赋值"></a>元素赋值</h3><p>直接为给定的键赋值：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">testMap[<span class="string">&quot;four&quot;</span>] = <span class="number">4</span></span><br></pre></td></tr></table></figure>
+<h3 id="查找元素"><a href="#查找元素" class="headerlink" title="查找元素"></a>查找元素</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">value, ok := testMap[<span class="string">&quot;one&quot;</span>]</span><br><span class="line"><span class="keyword">if</span> ok &#123; <span class="comment">// 找到了</span></span><br><span class="line">    <span class="comment">// 处理找到的value</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>从字典中查找指定键时，会返回两个值，第一个是真正返回的键值，第二个是是否找到的标识，判断是否在字典中成功找到指定的键，不需要检查取到的值是否为 <code>nil</code>，只需查看第二个返回值 <code>ok</code>，这是一个布尔值，如果查找成功，返回 <code>true</code>，否则返回 <code>false</code>，配合 <code>:=</code> 操作符，让你的代码没有多余成分，看起来非常清晰易懂。</p>
+<p>Go 语言中的字典和 Redis 一样，底层也是通过哈希表实现的，添加键值对到字典时，实际是将键转化为哈希值进行存储，在查找时，也是先将键转化为哈希值去哈希表中查询，从而提高性能。</p>
+<p>但是哈希表存在哈希冲突问题，即不同的键可能会计算出同样的哈希值，这个时候 Go 底层还会判断原始键的值是否相等。也正因如此，我们在声明字典的键类型时，要求数据类型必须是支持通过 <code>==</code> 或 <code>!=</code> 进行判等操作的类型，比如数字类型、字符串类型、数组类型、结构体类型等，不过为了提高字典查询性能，类型长度越短约好，通常，我们会将其设置为整型或者长度较短的字符串类型。</p>
+<h3 id="删除元素"><a href="#删除元素" class="headerlink" title="删除元素"></a>删除元素</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">delete</span>(testMap, <span class="string">&quot;four&quot;</span>)</span><br></pre></td></tr></table></figure>
+<p>上面代码将会从<code>testMap</code>中删除键为<code>four</code>的键值对。如果<code>four</code>这个键不存在或字典未初始化，也不会报错。</p>
+<h3 id="遍历字典"><a href="#遍历字典" class="headerlink" title="遍历字典"></a>遍历字典</h3><p>可以向遍历数组那样，使用<code>range</code>对字典进行遍历：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> k, v := <span class="keyword">range</span> testMap &#123;</span><br><span class="line">    fmt.Println(key, value)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>由于字典是无序的，所以输出可能并不按照初始化时的键值对顺序。</p>
+<p>当然，还可以使用匿名变量只获取字典的键或值：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> key := <span class="keyword">range</span> testMap &#123;</span><br><span class="line">    fmt.Println(key)</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">for</span> _, value := <span class="keyword">range</span> testMap &#123;</span><br><span class="line">    fmt.Println(value)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="键值对调"><a href="#键值对调" class="headerlink" title="键值对调"></a>键值对调</h3><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">invMap := <span class="built_in">make</span>(<span class="keyword">map</span>[<span class="keyword">int</span>] <span class="keyword">string</span>, <span class="number">3</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> k, v := <span class="keyword">range</span> testMap &#123;</span><br><span class="line">    invMap[v] = k</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> k, v := <span class="keyword">range</span> invMap &#123;</span><br><span class="line">    fmt.Println(k, v)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="字典排序"><a href="#字典排序" class="headerlink" title="字典排序"></a>字典排序</h3><p>由于 Go 语言的字典是一个无序集合，所以想对字典进行排序，要通过分别为字典的键和值创建切片，然后通过对切片进行排序来实现。</p>
+<h4 id="按照键进行排序"><a href="#按照键进行排序" class="headerlink" title="按照键进行排序"></a>按照键进行排序</h4><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">keys := <span class="built_in">make</span>([]<span class="keyword">string</span>, <span class="number">0</span>)</span><br><span class="line"><span class="keyword">for</span> k, _ := <span class="keyword">range</span> testMap &#123;</span><br><span class="line">    keys = <span class="built_in">append</span>(keys, k)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">sort.Strings(keys) <span class="comment">// 对键进行排序</span></span><br><span class="line"></span><br><span class="line">fmt.Println(<span class="string">&quot;Sorted map by key:&quot;</span>)</span><br><span class="line"><span class="keyword">for</span> _, k := <span class="keyword">range</span> keys &#123;</span><br><span class="line">    fmt.Println(k, testMap[k])</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="按照值进行排序"><a href="#按照值进行排序" class="headerlink" title="按照值进行排序"></a>按照值进行排序</h4><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">values := <span class="built_in">make</span>([]<span class="keyword">int</span> ,<span class="number">0</span>)</span><br><span class="line"><span class="keyword">for</span> _, v := <span class="keyword">range</span> testMap &#123;</span><br><span class="line">    values = <span class="built_in">append</span>(values, v)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">sort.Ints(values) <span class="comment">// 对值进行排序</span></span><br><span class="line"></span><br><span class="line">fmt.Println(<span class="string">&quot;Sorted map by value:&quot;</span>)</span><br><span class="line"><span class="keyword">for</span> _, v:= <span class="keyword">range</span> values &#123;</span><br><span class="line">    fmt.Println(invMap[v], v)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里借助了之前创建的<code>invMap</code>通过字典的值来反查找对应的键。</p>
+<h1 id="指针"><a href="#指针" class="headerlink" title="指针"></a>指针</h1><h2 id="简介-1"><a href="#简介-1" class="headerlink" title="简介"></a>简介</h2><p>变量的本质对一块内存空间的命名，我们可以通过引用变量名来使用这块内存空间存储的值，而指针则是用来指向这些变量值所在<strong>内存地址的值</strong>。</p>
+<blockquote>
+<p>注：变量值所在内存地址的值不等于该内存地址存储的变量值。</p>
+</blockquote>
+<h2 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h2><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">a := <span class="number">100</span></span><br><span class="line"><span class="keyword">var</span> ptr *<span class="keyword">int</span>  <span class="comment">// 声明指针类型</span></span><br><span class="line">ptr = &amp;a      <span class="comment">// 初始化指针类型值为变量 a </span></span><br><span class="line">fmt.Println(ptr)</span><br><span class="line">fmt.Println(*ptr)</span><br></pre></td></tr></table></figure>
+<p>上面代码中的 <code>ptr</code> 就是一个指针类型，表示指向存储 <code>int</code> 类型值的指针。<code>ptr</code> 本身是一个内存地址值，所以需要通过内存地址进行赋值（通过 <code>&amp;a</code> 可以获取变量 <code>a</code> 所在的内存地址），赋值之后，可以通过 <code>*ptr</code> 获取指针指向内存地址存储的变量值（我们通常将这种引用称作「间接引用」），所以上述代码打印结果是：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">0xc0000a2000</span><br><span class="line">100</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>每次打印的<code>ptr</code>值可能不同，因为存储变量<code>a</code>的内存地址在变动，不同操作系统打印的结果也不相同</p>
+</blockquote>
+<p>Go 语言之所以引入指针类型，主要基于两点考虑，一个是为程序员提供操作变量对应内存数据结构的能力；另一个是为了提高程序的性能（指针可以直接指向某个变量值的内存地址，可以极大节省内存空间，操作效率也更高），这在系统编程、操作系统或者网络应用中是不容忽视的因素。</p>
+<h2 id="使用场景"><a href="#使用场景" class="headerlink" title="使用场景"></a>使用场景</h2><p>指针在 Go 语言中有两个典型的使用场景：</p>
+<ul>
+<li>类型指针</li>
+<li>切片</li>
+</ul>
+<p>作为类型指针时，允许对这个指针类型指向的额内存地址存储值进行修改，传递数据时如果使用指针则无需拷贝数据从而节省内存空间。此外，和 C 语言的指针不同，Go 语言中的指针不能进行偏移和运算，因此更为安全。</p>
+<p>切片类型由指向数组起始元素的指针、元素数量和容量组成，所以切片与数组不同，是引用类型，而非值类型。</p>
+<h2 id="基本使用"><a href="#基本使用" class="headerlink" title="基本使用"></a>基本使用</h2><h3 id="声明和初始化"><a href="#声明和初始化" class="headerlink" title="声明和初始化"></a>声明和初始化</h3><p>指针变量在传值是之所以可以节省内存空间，是因为指针指向的内存地址大小是固定的，在 32 位机器上占 4 个字节，在 64 位机器上占 8 个字节，这与指针指向内存地址存储的值类型无关。</p>
+<p>当指针被声明后，没有指向任何变量内存地址时，它的零值是 nil，然后我们可以通过在给定变量前加上取地址符 <code>&amp;</code> 获取该变量对应的内存地址，再将其赋值给声明的指针类型，这样，就完成对指针类型的初始化了，接下来我们可以通过在指针类型前加上间接引用符 <code>*</code> 获取指针指向内存空间存储的变量值。</p>
+<p>当然，和所有其他 Go 数据类型一样，我们也可以通过 <code>:=</code> 对指针类型进行初始化：</p>
+<p>底层会自动判断指针的类型，在格式化输出时，可以通过 <code>%p</code> 来标识指针类型。</p>
+<p>此外，还可以通过内置函数 <code>new</code> 声明指针：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ptr := <span class="built_in">new</span>(<span class="keyword">int</span>)</span><br><span class="line">*ptr = <span class="number">100</span></span><br></pre></td></tr></table></figure>
+<h3 id="通过指针传值"><a href="#通过指针传值" class="headerlink" title="通过指针传值"></a>通过指针传值</h3><p>通过指针传值的好处是节省内存空间，此外还可以在调用函数中实现对变量值的修改，因为直接修改的是指针指向内存地址上存储的变量值，而不是值拷贝。</p>
+<p>为了体现区别，先来看看不使用指针的值拷贝：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">swap</span><span class="params">(a, b <span class="keyword">int</span>)</span></span>  &#123;</span><br><span class="line">    a, b = b, a</span><br><span class="line">    fmt.Println(a, b)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    a := <span class="number">1</span></span><br><span class="line">    b := <span class="number">2</span></span><br><span class="line">    swap(a, b)</span><br><span class="line">    fmt.Println(a, b)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">输出结果：</span></span><br><span class="line"><span class="comment">2 1</span></span><br><span class="line"><span class="comment">1 2</span></span><br><span class="line"><span class="comment">*/</span></span><br></pre></td></tr></table></figure>
+<p>下面通过指针传值：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">swap</span><span class="params">(a, b, *<span class="keyword">int</span>)</span></span> &#123;</span><br><span class="line">    *a, *b = *b, *a</span><br><span class="line">    fmt.Println(*a, *b)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    a := <span class="number">1</span></span><br><span class="line">    b := <span class="number">2</span></span><br><span class="line">    swap(&amp;a, &amp;b)</span><br><span class="line">    fmt.Println(a, b)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">输出结果</span></span><br><span class="line"><span class="comment">2 1</span></span><br><span class="line"><span class="comment">2 1</span></span><br><span class="line"><span class="comment">*/</span></span><br></pre></td></tr></table></figure>
+<p>通过指针传值时，直接对内存地址存储变量值进行操作，而主函数中的<code>a</code>、<code>b</code>变量仅仅是对应内存存储空间的别名而已，所以调用完<code>swap</code>后，它们所对应的内存空间存储值已经交换过来了。</p>
+<h2 id="unsafe-Pointer"><a href="#unsafe-Pointer" class="headerlink" title="unsafe.Pointer"></a>unsafe.Pointer</h2><p>我们前面介绍的指针都是被声明为指定类型的，而 <code>unsafe.Pointer</code> 是特别定义的一种指针类型，它可以包含任意类型变量的地址（类似 C 语言中的 <code>void</code> 类型指针）。Go 官方文档对这个类型有如下四个描述：</p>
+<ol>
+<li>任何类型的指针都可以被转化为 <code>unsafe.Pointer</code>；</li>
+<li><code>unsafe.Pointer</code> 可以被转化为任何类型的指针；</li>
+<li><code>uintptr</code> 可以被转化为 <code>unsafe.Pointer</code>；</li>
+<li><code>unsafe.Pointer</code> 可以被转化为 <code>uintptr</code>。</li>
+</ol>
+<h3 id="指针类型转化"><a href="#指针类型转化" class="headerlink" title="指针类型转化"></a>指针类型转化</h3><p><code>unsafe.Pointer</code> 可以在不同的指针类型之间做转化，从而可以表示任意可寻址的指针类型：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">i := <span class="number">10</span></span><br><span class="line"><span class="keyword">var</span> p *<span class="keyword">int</span> = &amp;i</span><br><span class="line"><span class="keyword">var</span> fp &amp;<span class="keyword">float32</span> = (*<span class="keyword">float32</span>)(unsafe.Pointer(p))</span><br><span class="line">*fp = *fp * <span class="number">10</span></span><br><span class="line">fmt.Println(i) <span class="comment">// 100</span></span><br></pre></td></tr></table></figure>
+<p>这里，我们将指向<code>int</code>类型的指针先转化为<code>unsafe.Pointer</code>类型，再转化为<code>*float32</code>类型并进行运算。</p>
+<p>这个示例说明了<code>unsafe.Pointer</code>是一个万能指针，可以在任何类型指针类型之间做转化，这就绕过了 Go 的类型安全机制，所以是一个不安全的操作。</p>
+<h3 id="指针运算"><a href="#指针运算" class="headerlink" title="指针运算"></a>指针运算</h3><p>此外，根据上面的转化规则 3、4，<code>unsafe.Pointer</code> 还可以与 <code>uintptr</code> 类型之间相互转化，为什么要单独列出这个类型呢？</p>
+<p><code>uintptr</code> 是 Go 内置的可用于存储指针的整型，而整型是可以进行数学运算的，因此，将 <code>unsafe.Pointer</code> 转化为 <code>uintptr</code> 类型后，就可以让本不具备运算能力的指针具备了指针运算能力：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">arr := [<span class="number">3</span>]<span class="keyword">int</span>&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>&#125;</span><br><span class="line">ap := &amp;arr</span><br><span class="line"></span><br><span class="line">sp := (*<span class="keyword">int</span>)(unsafe.Pointer(<span class="keyword">uintptr</span>(unsafe.Pointer(ap)) + unsafe.Sizeof(arr[<span class="number">0</span>])))</span><br><span class="line">*sp += <span class="number">3</span></span><br><span class="line">fmt.Println(arr) <span class="comment">// [1 5 3]</span></span><br></pre></td></tr></table></figure>
+<p>这里我们将数组<code>arr</code>的内存地址赋值给指针变量<code>ap</code>，然后通过<code>unsafe.Pointer</code>这个桥梁转化为<code>uintptr</code>类型，再加上数组元素偏移量<code>unsafe.Sizeof</code>，就可以得到该数组第二个元素的内存地址，最后再通过<code>unsafe.Pointer</code>函数将其转化为<code>int</code>类型的指针赋值给<code>sp</code>指针，并进行修改。</p>
+<p>这样就绕过了 Go 指针的安全限制，实现对指针的动态偏移和计算了，这会导致即使发生数组越界了，也不会报错，而是返回下一个内存地址存储的值，这就破坏了内存安全限制，所以这也是不安全的操作，我们在实际编码时要尽量避免使用，必须使用的话也要非常谨慎。</p>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://hill-jiang.github.io/2021/03/07/Go%E8%AF%AD%E8%A8%80%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Go/" rel="tag">Go</a></li></ul>
+
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2021/03/07/Go%E8%AF%AD%E8%A8%80%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0-%E6%B5%81%E7%A8%8B%E6%8E%A7%E5%88%B6/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            Go语言学习笔记-流程控制
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2021/02/17/playwright/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">Python 自动化测试工具 Playwright</div>
+      </a>
+    
+  </nav>
+
+  
+   
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2021
+        <i class="ri-heart-fill heart_icon"></i> 蒋山山
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        Powered by <a href="https://hexo.io" target="_blank">Hexo</a>
+        <span class="division">|</span>
+        Theme - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="Hill&#39;s blog"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="Search">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <script>
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        document.querySelector('.content').classList.remove('on');
+        document.querySelector('.sidebar').classList.remove('on');
+      }
+    </script>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+
+
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+
+
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: '.tocbot',
+    contentSelector: '.article-entry',
+    headingSelector: 'h1, h2, h3, h4, h5, h6',
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: 'main',
+    positionFixedSelector: '.tocbot',
+    positionFixedClass: 'is-position-fixed',
+    fixedSidebarOffset: 'auto'
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css">
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script>
+
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+
+
+<link rel="stylesheet" href="/css/clipboard.css">
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+
+
+<!-- CanvasBackground -->
+
+
+    
+  </div>
+</body>
+
+</html>
