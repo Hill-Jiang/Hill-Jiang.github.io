@@ -322,8 +322,7 @@
 <li><p>基于后6个元素创建切片<code>secondhalf := months[6:]</code></p>
 </li>
 </ul>
-<p>切片底层引用了一个数组，由三个部分构成——指针、长度和容量，指针指向数组起始下标，长度对应切片中元素的个数，容量则是切片起始位置到底层数组结尾的位置：</p>
-<p><img src="https://tcs.teambition.net/storage/312285de2b9604d5aa78129c13c608b3713e?Signature=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcHBJRCI6IjU5Mzc3MGZmODM5NjMyMDAyZTAzNThmMSIsIl9hcHBJZCI6IjU5Mzc3MGZmODM5NjMyMDAyZTAzNThmMSIsIl9vcmdhbml6YXRpb25JZCI6IiIsImV4cCI6MTYxNDQ3NTIxNSwiaWF0IjoxNjEzODcwNDE1LCJyZXNvdXJjZSI6Ii9zdG9yYWdlLzMxMjI4NWRlMmI5NjA0ZDVhYTc4MTI5YzEzYzYwOGIzNzEzZSJ9.zIy2_w8JDyQkNRTjIksrvNnGIMijp8OdIb6cXB2ZCNE&download=blob.jpeg" alt="img"></p>
+<p>切片底层引用了一个数组，由三个部分构成——指针、长度和容量，指针指向数组起始下标，长度对应切片中元素的个数，容量则是切片起始位置到底层数组结尾的位置。</p>
 <p>切片长度不能超过容量，和数组一样，我们可以通过内置函数<code>len</code>获取切片的长度，此外还可以通过<code>cap</code>获取切片容量。</p>
 <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">fmt.Println(<span class="built_in">len</span>(q2)) <span class="comment">// 3</span></span><br><span class="line">fmt.Println(<span class="built_in">cap</span>(q2)) <span class="comment">// 9</span></span><br></pre></td></tr></table></figure>
 <h3 id="基于切片"><a href="#基于切片" class="headerlink" title="基于切片"></a>基于切片</h3><p>类似切片可以基于一个数组创建，切片也可以基于另一个切片创建：</p>
