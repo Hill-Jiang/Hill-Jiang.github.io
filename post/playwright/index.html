@@ -1,0 +1,374 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<meta name="description" content=""/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>Python 自动化测试工具 Playwright | Hill&#39;s Blog</title>
+
+<link rel="shortcut icon" href="https://hill-jiang.github.io/favicon.ico?v=1705114048924">
+
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hill-jiang.github.io/styles/main.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dockerfile.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dart.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.27.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+<!-- DEMO JS -->
+<!--<script src="media/scripts/index.js"></script>-->
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.css">
+</head>
+<body>
+<div class="main gt-bg-theme-color-first">
+    <nav class="navbar navbar-expand-lg">
+    <div class="navbar-brand">
+        <img class="user-avatar" src="/images/avatar.png" alt="头像">
+        <div class="site-name gt-c-content-color-first">
+            Hill&#39;s Blog
+        </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-bars gt-c-content-color-first" style="font-size: 18px"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="navbar-nav mr-auto" style="text-align: center">
+            
+                <div class="nav-item">
+                    
+                        <a href="/" class="menu gt-a-link">
+                            首页
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/archives" class="menu gt-a-link">
+                            归档
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/tags" class="menu gt-a-link">
+                            标签
+                        </a>
+                    
+                </div>
+            
+        </div>
+        <div style="text-align: center">
+            <form id="gridea-search-form" style="position: relative" data-update="1705114048924" action="/search/index.html">
+                <input class="search-input" autocomplete="off" spellcheck="false" name="q" placeholder="搜索文章" />
+                <i class="fas fa-search gt-c-content-color-first" style="position: absolute; top: 9px; left: 10px;"></i>
+            </form>
+        </div>
+    </div>
+</nav>
+
+    <div class="post-container">
+        <div class="post-detail gt-bg-theme-color-second">
+            <article class="gt-post-content">
+                <h2 class="post-title">
+                    Python 自动化测试工具 Playwright
+                </h2>
+                <div class="post-info">
+                    <time class="post-time gt-c-content-color-first">
+                        · 2021-02-17 ·
+                    </time>
+                    
+                        <a href="https://hill-jiang.github.io/tag/X1d9ds5kfn/" class="post-tags">
+                            # Python
+                        </a>
+                    
+                </div>
+                <div class="post-content">
+                    <p>Github 地址：<a href="https://github.com/microsoft/playwright-python"><strong>https://github.com/microsoft/playwright-python</strong></a></p>
+<h2 id="简介">简介</h2>
+<p>Playwright 是一个微软开源的浏览器自动化端到端测试工具，有了它就可以方便地对网页应用程序执行端到端测试。还支持 Linux、macOS、Windows 系统下的 Chromium、Firefox 和 WebKit 浏览器。</p>
+<h2 id="安装">安装</h2>
+<pre><code>python -m pip install playwright
+python -m playwright install
+</code></pre>
+<p>将同时安装 Playwright 以及 Chromium、Firefox 和 WebKit 的浏览器驱动依赖。</p>
+<h2 id="使用">使用</h2>
+<h3 id="codegen">codegen</h3>
+<p>Playwright 支持记录用户在浏览器中的操作并且自动生成代码。</p>
+<pre><code class="language-text">python -m playwright codegen
+</code></pre>
+<p>Playwright 支持同步 API 以及异步 API，它们在功能方面是相同的，只是在使用API的方式上不同。</p>
+<h3 id="同步-api-demo">同步 API demo</h3>
+<pre><code class="language-python">from playwright import sync_playwright
+
+with sync_playwright() as p:
+    for browser_type in [p.chromium, p.firefox, p.webkit]:
+        browser = browser_type.launch()
+        page = browser.newPage()
+        page.goto('http://whatsmyuseragent.org/')
+        page.screenshot(path=f'example-{browser_type.name}.png')
+        browser.close()
+</code></pre>
+<h3 id="异步-api-demo">异步 API demo</h3>
+<pre><code class="language-python">import asyncio
+from playwright import async_playwright
+
+async def main():
+    async with async_playwright() as p:
+        for browser_type in [p.chromium, p.firefox, p.webkit]:
+            browser = await browser_type.launch()
+            page = await browser.newPage()
+            await page.goto('http://whatsmyuseragent.org/')
+            await page.screenshot(path=f'example-{browser_type.name}.png')
+            await browser.close()
+
+asyncio.get_event_loop().run_until_complete(main())
+</code></pre>
+<h3 id="其他">其他</h3>
+<p>Playwright 还支持 pytest 测试、交互模式运行、执行 JS 代码、记录网络请求等功能。</p>
+<h2 id="体验">体验</h2>
+<h3 id="安装-2">安装</h3>
+<p>安装浏览器依赖的时候很慢，即使已经 FQ</p>
+<h3 id="codegen-2">codegen</h3>
+<p>先来试试自动生成代码的功能</p>
+<pre><code class="language-text">C:\Users\Hill\Desktop&gt;python -m playwright codegen --help
+Usage: index codegen [options] [url]
+
+open page and generate code for user actions
+
+Options:
+  -o, --output &lt;file name&gt;  saves the generated script to a file
+  --target &lt;language&gt;       language to use, one of javascript, python, python-async, csharp
+                            (default: &quot;python&quot;)
+  -h, --help                display help for command
+
+Examples:
+
+  $ codegen
+  $ codegen --target=python
+  $ -b webkit codegen https://example.com
+</code></pre>
+<p><code>-o</code>指定输出文件，<code>--target</code>指定输出语言，<code>-b</code>指定使用的浏览器类型。</p>
+<p>就用使用百度搜索<code>Python</code>来试一下</p>
+<pre><code class="language-text">python -m playwright codegen -o codegen_test.py https://www.baidu.com
+</code></pre>
+<p>执行完后，会自动打开一个浏览器，跳转到百度，输入 Python 后回车，然后再关闭浏览器，运行目录下就出现了<code>codegen_test.py</code>，文件内容如下：</p>
+<pre><code class="language-python">from playwright import sync_playwright
+
+def run(playwright):
+    browser = playwright.chromium.launch(headless=False)
+    context = browser.newContext()
+
+    # Open new page
+    page = context.newPage()
+
+    # Go to https://www.baidu.com/
+    page.goto(&quot;https://www.baidu.com/&quot;)
+
+    # Click input[name=&quot;wd&quot;]
+    page.click(&quot;input[name=\&quot;wd\&quot;]&quot;)
+
+    # Press CapsLock
+    page.press(&quot;input[name=\&quot;wd\&quot;]&quot;, &quot;CapsLock&quot;)
+
+    # Fill input[name=&quot;wd&quot;]
+    page.fill(&quot;input[name=\&quot;wd\&quot;]&quot;, &quot;P&quot;)
+
+    # Press CapsLock
+    page.press(&quot;input[name=\&quot;wd\&quot;]&quot;, &quot;CapsLock&quot;)
+
+    # Fill input[name=&quot;wd&quot;]
+    page.fill(&quot;input[name=\&quot;wd\&quot;]&quot;, &quot;Python&quot;)
+
+    # Press Enter
+    page.press(&quot;input[name=\&quot;wd\&quot;]&quot;, &quot;Enter&quot;)
+    # assert page.url() == &quot;https://www.baidu.com/s?ie=utf-8&amp;f=8&amp;rsv_bp=1&amp;rsv_idx=1&amp;tn=baidu&amp;wd=Python&amp;fenlei=256&amp;rsv_pq=e0a2bd93007a18fd&amp;rsv_t=af15WBQFDyMcGk%2B3Xs%2BRwDVBT40f2Z8itvMfT5sBiqICLeozAk0f0ou7Pao&amp;rqlang=cn&amp;rsv_enter=1&amp;rsv_dl=tb&amp;rsv_sug3=7&amp;rsv_sug1=6&amp;rsv_sug7=100&amp;rsv_sug2=0&amp;rsv_btype=i&amp;prefixsug=Python&amp;rsp=5&amp;inputT=2425&amp;rsv_sug4=3717&quot;
+
+    # Close page
+    page.close()
+
+    # ---------------------
+    context.close()
+    browser.close()
+
+with sync_playwright() as playwright:
+    run(playwright)
+</code></pre>
+<p>重新执行该 Python 文件，将重复一遍刚刚的操作，自动启动浏览器，访问百度并搜索关键词<code>Python</code>，由于停留时间太短，所以要在<code>page.close()</code>前面加一个等待时间观察效果</p>
+<h3 id="同步和异步-api-测试">同步和异步 API 测试</h3>
+<p>参照官方 demo 编写了同步和异步 API 测试脚本：</p>
+<pre><code class="language-python">import asyncio
+from playwright import sync_playwright, async_playwright
+
+def sync_demo():
+    with sync_playwright() as p:
+        for browser_type in [p.chromium, p.firefox, p.webkit]:
+            browser = browser_type.launch()
+            page = browser.newPage()
+            page.goto('http://www.baidu.com')
+            page.screenshot(path=f'sync_example-{browser_type.name}.png')
+            browser.close()
+
+async def async_demo():
+    async with async_playwright() as p:
+        for browser_type in [p.chromium, p.firefox, p.webkit]:
+            browser = await browser_type.launch()
+            page = await browser.newPage()
+            await page.goto('http://www.baidu.com')
+            await page.screenshot(path=f'async_example-{browser_type.name}.png')
+            await browser.close()
+
+sync_demo()
+asyncio.get_event_loop().run_until_complete(async_demo())
+</code></pre>
+<p>运行时，依次打开三种不同的浏览器，访问百度首页并截图，并且由于默认使用的是 headless 模式，所以不会显示浏览器页面</p>
+<p>headless 模式可以使用<code>browser = browser_type.launch(headless=Flase)</code>禁用</p>
+<h3 id="记录网页请求">记录网页请求</h3>
+<pre><code class="language-python">from playwright import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch()
+    page = browser.newPage()
+
+    def log_and_continue_request(route, request):
+      print(request.url)
+      route.continue_()
+
+    # Log and continue all network requests
+    page.route('**', lambda route, request: log_and_continue_request(route, request))
+
+    page.goto('http://www.baidu.com')
+    browser.close()
+</code></pre>
+<p>执行后，会打印访问百度首页时，浏览器发送的所有请求：</p>
+<pre><code class="language-text">http://www.baidu.com/
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/topnav/baiduyun@2x-e0be79e69e.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/topnav/zhidao@2x-e9b427ecc4.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/topnav/baike@2x-1fe3db7fa6.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/topnav/tupian@2x-482fc011fc.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/topnav/baobaozhidao@2x-af409f9dbe.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/topnav/wenku@2x-f3aba893c1.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/topnav/jingyan@2x-e53eac48cb.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/topnav/yinyue@2x-c18adacacb.png
+https://www.baidu.com/img/gjrdong_5dbd765f1fd82a0771cbc88aec7341c8.gif
+https://www.baidu.com/img/flexible/logo/pc/result.png
+https://www.baidu.com/img/flexible/logo/pc/result@2.png
+https://www.baidu.com/img/flexible/logo/pc/peak-result.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/qrcode/qrcode@2x-daf987ad02.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/qrcode/qrcode-hover@2x-f9b106a848.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/lib/jquery-1-edb203c114.10.2.js
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/lib/esl-ef22c5ed31.js
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/sbase-0948aa26f1.js
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/s_super_index-855fcfd82e.js
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/min_super-ce30feac9c.js
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/components/hotsearch-8f112f3361.js
+https://hectorstatic.baidu.com/cd37ed75a9387c5b.js
+https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/static/protocol/https/bundles/polyfill_9354efa.js
+https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/static/protocol/https/global/js/all_async_search_dafef7e.js
+https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/static/protocol/https/plugins/every_cookie_4644b13.js
+https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/static/protocol/https/plugins/bzPopper_7c5ff52.js
+https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/static/protocol/https/home/js/nu_instant_search_f7b49e5.js
+https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/static/protocol/https/plugins/swfobject_0178953.js
+https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/static/protocol/https/soutu/js/tu_68114f1.js
+https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/static/protocol/https/amd_modules/@baidu/search-sug_5b9188b.js
+https://sp1.baidu.com/-L-Xsjip0QIZ8tyhnq/v.gif?logactid=1234567890&amp;showTab=10000&amp;opType=showpv&amp;mod=superman%3Alib&amp;submod=index&amp;superver=supernewplus&amp;glogid=2905514690&amp;type=2011&amp;pid=315&amp;isLogin=0&amp;version=PCHome&amp;terminal=PC&amp;qid=2905514810&amp;sid=1460_33224_33058_31254_32971_33098_33101_26350_33198_33265&amp;super_frm=&amp;from_login=&amp;from_reg=&amp;query=&amp;curcard=2&amp;curcardtab=&amp;_r=0.5174681533375083
+https://sp2.baidu.com/-L-Ysjip0QIZ8tyhnq/v.gif?mod=superman%3Acomponents&amp;submod=hotsearch&amp;utype=undefined&amp;superver=supernewplus&amp;portrait=undefined&amp;glogid=2905514690&amp;type=2011&amp;pid=315&amp;isLogin=0&amp;version=PCHome&amp;terminal=PC&amp;qid=2905514810&amp;sid=1460_33224_33058_31254_32971_33098_33101_26350_33198_33265&amp;super_frm=&amp;from_login=&amp;from_reg=&amp;query=&amp;curcard=2&amp;curcardtab=&amp;_r=0.3818542391730819&amp;m=superman%3Acomponents_hotsearchShow&amp;showType=hotword&amp;words=%5B%2231%E7%9C%81%E5%8C%BA%E5%B8%82%E6%96%B0%E5%A2%9E24%E4%BE%8B%E7%A1%AE%E8%AF%8A%3A%E6%9C%AC%E5%9C%9F5%E4%BE%8B%22%2C%22%E9%9F%A9%E6%B0%91%E9%97%B4%E4%BA%BA%E5%A3%AB%E8%B5%B7%E8%AF%89%E4%B8%AD%E9%9F%A9%E6%94%BF%E5%BA%9C%E8%B4%A5%E8%AF%89%22%2C%22%E7%B4%A0%E5%AA%9B%E6%A1%88%E7%BD%AA%E7%8A%AF%E5%88%B0%E5%AE%B6%E7%94%BB%E9%9D%A2%3A%E8%AD%A6%E5%AF%9F%E5%A0%B5%E9%97%A8%E4%BF%9D%E6%8A%A4%22%2C%22%E5%AE%98%E6%96%B9%E9%80%9A%E6%8A%A5%E6%95%99%E7%BB%83%E7%BD%9A%E5%AD%A6%E7%94%9F%E7%94%A8%E4%BE%BF%E6%B1%A0%E6%B0%B4%E6%B4%97%E8%84%B8%22%2C%22%E6%8B%9C%E7%99%BB%3A39%E5%A4%A9%E5%90%8E%E7%BE%8E%E5%B0%86%E9%87%8D%E6%96%B0%E5%8A%A0%E5%85%A5%E5%B7%B4%E9%BB%8E%E5%8D%8F%E5%AE%9A%22%2C%22%E9%BB%91%E9%BE%99%E6%B1%9F%E6%96%B0%E5%A2%9E4%E4%BE%8B%E6%9C%AC%E5%9C%9F%E7%97%85%E4%BE%8B%20%E5%90%AB2%E5%B9%BC%E7%AB%A5%22%5D&amp;pagenum=0
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/font/iconfont-8db5f471f4.woff2
+https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/static/protocol/https/soutu/css/soutu_new2_ae491b7.css
+https://www.baidu.com/sugrec?prod=pc_his&amp;from=pc_web&amp;json=1&amp;sid=1463_33244_33061_32971_33099_33101_32846_33199_33240&amp;hisdata=&amp;_t=1607828626043&amp;req=2&amp;csor=0
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/img/searchbox/nicon-10750f3f7d.png
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/components/tips-e2ceadd14d.js
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/super_load-a97cbd2188.js
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/components/qrcode-da919182da.js
+https://dss0.bdstatic.com/5aV1bjqh_Q23odCf/static/superman/js/components/guide-13c605998f.js
+</code></pre>
+<h3 id="修改前端响应">修改前端响应</h3>
+<p>利用 route 方法，我们可以实现一些网络劫持和修改操作，比如修改 request 的属性，修改 response 响应结果等。</p>
+<p>举例：</p>
+<pre><code class="language-python">from playwright.sync_api import sync_playwright
+import re
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=False)
+    page = browser.new_page()
+
+    def cancel_request(route, request):
+        route.abort()
+
+    page.route(re.compile(r&quot;(\.png)|(\.jpg)&quot;), cancel_request)
+    page.goto(&quot;https://spa6.scrape.center/&quot;)
+    page.wait_for_load_state('networkidle')
+    page.screenshot(path='no_picture.png')
+    browser.close()
+</code></pre>
+<p>这里我们调用了 route 方法，第一个参数通过正则表达式传入了匹配的 URL 路径，这里代表的是任何包含 <code>.png</code> 或 <code>.jpg</code> 的链接，遇到这样的请求，会回调 cancel_request 方法处理，cancel_request 方法可以接收两个参数，一个是 route，代表一个 CallableRoute 对象，另外一个是 request，代表 Request 对象。这里我们直接调用了 route 的 abort 方法，取消了这次请求，所以最终导致的结果就是图片的加载全部取消了。</p>
+<p>这个设置有什么用呢？其实是有用的，因为图片资源都是二进制文件，而我们在做爬取过程中可能并不想关心其具体的二进制文件的内容，可能只关心图片的 URL 是什么，所以在浏览器中是否把图片加载出来就不重要了。所以如此设置之后，我们可以提高整个页面的加载速度，提高爬取效率。</p>
+<p>另外，利用这个功能，我们还可以将一些响应内容进行修改，比如直接修改 Response 的结果为自定义的文本文件内容，或是构造某些特定的响应返回给前端，用于测试前端在特定响应值情况下的表现。</p>
+<h2 id="总结">总结</h2>
+<p>个人体验是 Playwright 相比于 Selenium 或是 Pyppeteer，安装和使用都更加简便，不需要额外的 webdriver 或是特定版本的浏览器。</p>
+<p>最大的优点可能是 codegen 功能，能够大大缩短浏览器自动化代码编写的时间，并且其语法也相对简单，另外，记录所有页面请求、网络劫持修改等功能也非常实用。</p>
+<p>缺点是离线环境下的部署安装可能比较麻烦，仍待研究。</p>
+
+                </div>
+            </article>
+        </div>
+
+        
+            <div class="next-post">
+                <div class="next gt-c-content-color-first">下一篇</div>
+                <a href="https://hill-jiang.github.io/post/添加“在此处打开windowsTerminal”到右键菜单/" class="post-title gt-a-link">
+                    添加“在此处打开windowsTerminal”到右键菜单
+                </a>
+            </div>
+        
+
+        
+
+        
+
+        
+
+        <div class="site-footer gt-c-content-color-first">
+    <div class="slogan gt-c-content-color-first">惟学无际</div>
+    <div class="social-container">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    </div>
+    <div class="footer-info">
+        Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+    </div>
+    <div>
+        Theme by <a href="https://imhanjie.com/" target="_blank">imhanjie</a>, Powered by <a
+                href="https://github.com/getgridea/gridea" target="_blank">Gridea | <a href="https://hill-jiang.github.io/atom.xml" target="_blank">RSS</a></a>
+    </div>
+</div>
+
+<script>
+  hljs.initHighlightingOnLoad()
+</script>
+
+    </div>
+</div>
+</body>
+</html>

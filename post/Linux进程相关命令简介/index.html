@@ -1,0 +1,764 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<meta name="description" content=""/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>Linux 进程相关命令简介 | Hill&#39;s Blog</title>
+
+<link rel="shortcut icon" href="https://hill-jiang.github.io/favicon.ico?v=1705114048924">
+
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hill-jiang.github.io/styles/main.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dockerfile.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dart.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.27.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+<!-- DEMO JS -->
+<!--<script src="media/scripts/index.js"></script>-->
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.css">
+</head>
+<body>
+<div class="main gt-bg-theme-color-first">
+    <nav class="navbar navbar-expand-lg">
+    <div class="navbar-brand">
+        <img class="user-avatar" src="/images/avatar.png" alt="头像">
+        <div class="site-name gt-c-content-color-first">
+            Hill&#39;s Blog
+        </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-bars gt-c-content-color-first" style="font-size: 18px"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="navbar-nav mr-auto" style="text-align: center">
+            
+                <div class="nav-item">
+                    
+                        <a href="/" class="menu gt-a-link">
+                            首页
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/archives" class="menu gt-a-link">
+                            归档
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/tags" class="menu gt-a-link">
+                            标签
+                        </a>
+                    
+                </div>
+            
+        </div>
+        <div style="text-align: center">
+            <form id="gridea-search-form" style="position: relative" data-update="1705114048924" action="/search/index.html">
+                <input class="search-input" autocomplete="off" spellcheck="false" name="q" placeholder="搜索文章" />
+                <i class="fas fa-search gt-c-content-color-first" style="position: absolute; top: 9px; left: 10px;"></i>
+            </form>
+        </div>
+    </div>
+</nav>
+
+    <div class="post-container">
+        <div class="post-detail gt-bg-theme-color-second">
+            <article class="gt-post-content">
+                <h2 class="post-title">
+                    Linux 进程相关命令简介
+                </h2>
+                <div class="post-info">
+                    <time class="post-time gt-c-content-color-first">
+                        · 2023-10-02 ·
+                    </time>
+                    
+                        <a href="https://hill-jiang.github.io/tag/4l_3RwoEe/" class="post-tags">
+                            # Linux
+                        </a>
+                    
+                </div>
+                <div class="post-content">
+                    <h1 id="前言">前言</h1>
+<p>日常工作中我们经常通过串口管理设备或是查看某些信息，而串口连接的设备系统本质上就是在嵌入式设备上运行的 Linux 系统。</p>
+<p>本文介绍了一些 Linux 系统进程相关的命令使用方法以及含义，需要使用时可以快速查阅。</p>
+<h1 id="1-什么是进程">1 什么是进程</h1>
+<h2 id="进程与程序">进程与程序</h2>
+<ul>
+<li><strong>程序（Program）</strong>：通常为二进制程序，放置在存储媒介中（如硬盘、光盘、软盘、磁带等），以物理文件的形式存在。</li>
+<li><strong>进程（Process）</strong>：程序被触发后，执行者的权限与属性、程序的代码与所需数据等都会被加载到内存中，操作系统给予这个内存中的单元一个<strong>标识符（PID）</strong>，可以说进程就是一个在运行中的程序。</li>
+</ul>
+<h2 id="服务常驻在内存中的进程">服务：常驻在内存中的进程</h2>
+<p>常驻在内存中的进程通常都是负责一些系统所提供的功能以服务用户的各项任务，因此这些常驻进程就会被我们成为：<strong>服务（deamon）</strong>。</p>
+<p>系统的服务非常多，主要分成系统本身所需要的服务（例如 crond、atd 以及 rsyslogd 等）和负责网络连接的服务（例如 apache、named、postfix、vsftpd 等）。</p>
+<p>网络服务被执行后，会启动一个负责网络监听的<strong>端口（port）</strong>，以提供外部客户端（client）的连接请求。</p>
+<blockquote>
+<p>Linux 系统为了让用户简单判断一个进程是否为 deamon，在一般的 deamon 类型的进程文件名后面都会加上 d，例如 httpd、vsftpd 等</p>
+</blockquote>
+<h1 id="2-进程管理">2 进程管理</h1>
+<h2 id="查看进程">查看进程</h2>
+<h3 id="ps-输出某个时间点的进程运行情况">ps: 输出某个时间点的进程运行情况</h3>
+<pre><code>选项与参数：
+-A: 所有的进程均显示出来，与-e 效果相同
+-a: 不显示与终端有关的进程
+-u: 有效使用者（effective user)相关的进程
+-x: 通常这个参数与 u 一起使用，可列出比较完整的信息
+输出格式规划：
+-l: 较长，较详细地将该 PID 的信息列出
+-j: 任务的格式（jobs format）
+-f: 做一个更为完整的输出
+</code></pre>
+<p>仅查看自己的 bash 相关的进程：<code>ps -l</code></p>
+<pre><code>F S   UID    PID   PPID  C PRI  NI ADDR SZ WCHAN  TTY          TIME CMD
+4 S     0   2034   1866  0  80   0 - 18201 poll_s pts/0    00:00:00 sudo
+4 R     0   2045   2034  0  80   0 -  9008 -      pts/0    00:00:00 ps
+</code></pre>
+<ul>
+<li>F：代表这个进程标识（process flags），说明这个进程的权限，常见号码有：
+<ul>
+<li>4，表示此进程的权限为 root</li>
+<li>1，表示此子进程仅执行复制（fork）而没有实际执行（exec）</li>
+</ul>
+</li>
+<li>S：代表这个进程的状态（STAT），主要状态有：
+<ul>
+<li>R(Running)，该进程正在进行中</li>
+<li>S(Sleep)，该进程目前正在睡眠状态（idle），但可以被唤醒（signal）</li>
+<li>D，不可被唤醒的睡眠状态，通常这个进程可能在等待 I/O 的情况</li>
+<li>T，停止状态，可能是在任务控制（后台暂停）或跟踪（traced）状态</li>
+<li>Z(Zombie)，僵尸状态，进程已经终止但却无法被删除至内存外</li>
+</ul>
+</li>
+<li>UID/PID/PPID：代表此进程被该 UID 拥有/此进程的 PID 号码/此进程的父进程 PID 号码</li>
+<li>C：代表 CPU 使用率，单位为百分比</li>
+<li>PRI/NI：Priority/Nice 的缩写，代表此进程被 CPU 所执行的优先级，数值越小代表该进程越快被 CPU 执行</li>
+<li>ADDR/SZ/WCHAN：都与内存有关，ADDR 是 kernel function，指出该进程在内存的哪个部分，如果是个 running 的进程，一般会显示【-】；SZ 代表此进程占用了多少内存；WCHAN 表示目前进程是否在运行，若为【-】表示正在运行中</li>
+<li>TTY：登录者的终端位置，若为远程登录则使用动态终端接口名称（pts/n）</li>
+<li>TIME：使用的 CPU 时间，此进程实际花费 CPU 运行的时间</li>
+<li>CMD：表示造成此进程触发的命令</li>
+</ul>
+<p>查看系统所有进程：<code>ps aux</code></p>
+<pre><code>USER        PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root          1  0.1  0.4 159708  8140 ?        Ss   22:49   0:01 /sbin/init aut
+root          2  0.0  0.0      0     0 ?        S    22:49   0:00 [kthreadd]
+...中间省略...
+jss        2119  0.0  0.1  46788  3628 pts/0    R+   23:01   0:00 ps aux
+</code></pre>
+<ul>
+<li>USER：该进程属于所属用户账号</li>
+<li>PID：该进程的进程 ID</li>
+<li>%CPU：该进程占用的 CPU 百分比</li>
+<li>%MEM：该进程占用的物理内存白分别</li>
+<li>VSZ：该进程使用的虚拟内存量（KB）</li>
+<li>RSS：该进程占用的固定的内存（KB）</li>
+<li>TTY：该进程是在哪个终端上面运行，若与终端无关则显示【?】tty1-tty6 时本机上的登录进程，若为 pts/0 等，则表示是有网络连接进入主机的进程</li>
+<li>STAT：该进程目前的状态，与 ps -l 的 S 标识相同（R/S/T/Z）</li>
+<li>START：该进程被触发启动的时间</li>
+<li>TIME：该进程实际使用 CPU 运行的时间</li>
+<li>COMMAND：造成该进程触发的命令</li>
+</ul>
+<p>一般来说，<code>ps aux</code>会依照 PID 的顺序来排序显示。</p>
+<h3 id="top动态查看进程的变化">top：动态查看进程的变化</h3>
+<pre><code>top [-d 数字] | top [-bnp]
+选项与参数：
+-d：后面可以接秒数，就是整个进程界面更新的秒数，默认是 5 秒
+-b：以批量的方式执行 top，还有更多的参数可以使用，通常会搭配数据流重定向来将批量的结果输出为文件
+-n：与-b 搭配，表示需要执行几次 top 的输出结果
+-p：指定某些 PID 执行查看监测
+在 top 执行过程中可以使用的命令：
+	?：显示在 top 中可以输入的按键命令
+	P：以 CPU 的使用排序显示
+	M：以内存的使用排序显示
+	N：以 PID 使用排序
+	T：由该进程使用的 CPU 时间累积（TIME+）排序
+	k：给予某个 PID 一个信号（signal）
+	r：给予某个 PID 重新制定一个 nice 值
+	q：退出 top
+</code></pre>
+<p>与 ps 的静态结果输出不同，top 这个命令可以持续监测整个系统的进程任务状态。在默认情况下，每次更新进程资源的时间为 5 秒，可以使用-d 参数修改。</p>
+<pre><code>top - 14:47:33 up  3:50,  2 users,  load average: 0.00, 0.00, 0.00
+Tasks: 206 total,   1 running, 141 sleeping,   1 stopped,   0 zombie
+%Cpu(s):  0.0 us,  0.3 sy,  0.0 ni, 99.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+KiB Mem :  2017460 total,  1054752 free,   502000 used,   460708 buff/cache
+KiB Swap:   969960 total,   969960 free,        0 used.  1358900 avail Mem 
+   PID USER      PR  NI    VIRT    RES    SHR S %CPU %MEM     TIME+ COMMAND                                                   
+   293 root      20   0       0      0      0 S  0.3  0.0   0:00.03 jbd2/sda1-8
+     1 root      20   0  159700   8856   6644 S  0.0  0.4   0:01.36 systemd
+     2 root      20   0       0      0      0 S  0.0  0.0   0:00.00 kthreadd
+     4 root       0 -20       0      0      0 I  0.0  0.0   0:00.00 kworker/0:0H
+     6 root       0 -20       0      0      0 I  0.0  0.0   0:00.00 mm_percpu_wq
+...（以下省略）
+</code></pre>
+<ul>
+<li>第一行（top...）：
+<ul>
+<li>目前的时间</li>
+<li>开机到目前为止所经过的时间</li>
+<li>已经登录系统的用户人数</li>
+<li>系统在 1、5、15 分钟的平均负载。代表的是 1、5、15 分钟，系统平均要负责运行几个进程的意思。数值越小代表系统约闲置，若高于 1 则需要注意系统进程是否过于频繁</li>
+</ul>
+</li>
+<li>第二行（Tasks...）：
+<ul>
+<li>目前进程总量</li>
+<li>Running、Sleeping、Stopped、Zombie 状态的进程数量</li>
+</ul>
+</li>
+<li>第三行（%Cpus...）：CPU 的整体负载，需要特别注意 wa 项，该项代表 IO wait，通常变慢可能都是 I/O 产生的问题</li>
+<li>第四行与第五行：表示目前的物理内存与虚拟内存的使用情况</li>
+<li>第六行及以下：显示进程状态
+<ul>
+<li>PID：每个进程的 PID</li>
+<li>USER：该进程所属的用户</li>
+<li>PR：Priority，进程的优先执行顺序，越小则越早被执行</li>
+<li>NI：Nice，与 Priority 有关，越小则越早被执行</li>
+<li>%CPU：CPU 的使用率</li>
+<li>%MEM：MEM 的使用率</li>
+<li>TIME+：CPU 使用时间的累加</li>
+</ul>
+</li>
+</ul>
+<p>top 默认使用 CPU 的使用率作为排序依据，可使用【M】按使用内存排序，使用【N】以 PID 排序。</p>
+<p>若想要将 top 的结果输出为文件，可以使用：<code>top -b -n 2 &gt; /tmp/top.txt</code>，上述命令将 top 的信息执行 2 次，然后将结果输出到<code>/tmp/top.txt</code>文件中</p>
+<h3 id="pstree">pstree</h3>
+<pre><code>pstree [-A|U] [-up]
+选项与参数：
+-A：各进程树之间的连接以 ASCII 字符来连接
+-U：各进程树之间的连接以 Unicode 的字符来连接
+-p：同时列出每个进程的 PID
+-u：同时列出每个进程的所属账号名称
+</code></pre>
+<p>pstree 命令用于查找进程之间的相关性。</p>
+<pre><code>ps -up
+systemd(1)─┬─ModemManager(479)─┬─{ModemManager}(496)
+           │                   └─{ModemManager}(499)
+           ├─NetworkManager(488)─┬─dhclient(634)
+           │                     ├─{NetworkManager}(563)
+...（中间省略）
+           ├─vmtoolsd(1097)
+           ├─vmtoolsd(1664,jss)───{vmtoolsd}(1793)
+           ├─vmware-vmblock-(1074)─┬─{vmware-vmblock-}(1075)
+           │                       └─{vmware-vmblock-}(1076)
+           ├─whoopsie(1140,whoopsie)─┬─{whoopsie}(1154)
+           │                         └─{whoopsie}(1159)
+           └─wpa_supplicant(487)
+</code></pre>
+<p>从运行结果可知，所有的进程都是依附在 systemd（PID 为 1）这个进程下的，因为它是由 Linux 内核所主动调用的第一个进程。</p>
+<p>如果子进程挂掉或者总是 kill 不掉子进程，就用 pstree 找到它的父进程看看。</p>
+<h2 id="管理进程">管理进程</h2>
+<p>进程之间时可以互相控制的。举例来说，你可以关闭、重新启动服务器软件，服务器软件本身是个进程，你既然可以让它关闭 i 或启动，当然就可以控制该进程。进程是如何互相管理的呢？其实是通过给予该进程一个信号（signal）去告知该进程你想要让它做什么。</p>
+<p>使用<code>kill -l</code>命令可以查询所有的信号代号和名称，主要的信号如下：</p>
+<table>
+<thead>
+<tr>
+<th>代号</th>
+<th>名称</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>SIGHUP</td>
+<td>启动被终止的进程，可让该 IPD 重新读取自己的配置文件，类似重启</td>
+</tr>
+<tr>
+<td>2</td>
+<td>SIGINT</td>
+<td>相当于用键盘输入[ctrl]-c 来中断一个进程的运行</td>
+</tr>
+<tr>
+<td>9</td>
+<td>SIGKILL</td>
+<td>代表强制中断一个进程的执行，如果该进程执行到一半，那么尚未完成的部分可能会有“半成品”产生</td>
+</tr>
+<tr>
+<td>15</td>
+<td>SIGTERM</td>
+<td>以正常的方式结束进程来终止该进程。由于是正常的终止，所以后续的操作会将它完成。</td>
+</tr>
+<tr>
+<td>19</td>
+<td>SIGSTOP</td>
+<td>相当于用键盘输入[ctrl]-z 来暂停一个进程的运行</td>
+</tr>
+</tbody>
+</table>
+<p>例 1：重启 rsyslogd 进程</p>
+<pre><code>kill -SIGUP $(ps aux | grep 'rsyslogd' | grep -v 'grep' | awk '{print $2}')
+</code></pre>
+<p>例 2：强制终止所有以 httpd 启动的进程</p>
+<pre><code>killall -9 httpd
+</code></pre>
+<p>要删除某进程，可以使用 PID 或是启动该进程的命令名称，而如果要删除某个服务，最简单的方法是利用 killall，将系统中所有以某个命令名称启动的进程全部删除。</p>
+<h2 id="进程的执行顺序">进程的执行顺序</h2>
+<h3 id="priority-与-nice-值">Priority 与 Nice 值</h3>
+<pre><code>jss@ubuntu:~$ ps -l
+F S   UID    PID   PPID  C PRI  NI ADDR SZ WCHAN  TTY          TIME CMD
+0 S  1000   1792   1791  0  80   0 -  7439 wait   pts/0    00:00:00 bash
+0 R  1000  31783   1792  0  80   0 -  9008 -      pts/0    00:00:00 ps
+</code></pre>
+<p>PRI 和 NI 都用来表示进程的运行优先级，那么它们有什么不同呢？</p>
+<p>PRI 值由内核动态调整，用户无法直接调整 PRI 值。但是用户可以设置 NI 值，一般来说，PRI 与 NI 的相关性为：</p>
+<pre><code>PRI(new) = PRI(old) + NI
+</code></pre>
+<p>需要注意的是，并不一定原本 PRI 的值为 50，我们给予一个 NI=5，就会让 PRI 变成 55。因为 PRI 是系统动态决定的，虽然 NI 值可以影响 PRI，但最终的 PRI 仍是要经过系统分析后才决定的。另外，NI 值是有正负的，当 NI 值为负时，就可以让该进程优先级提升。</p>
+<ul>
+<li>NI 值可调整的范围为-20~19</li>
+<li>root 可随意调整自己或它人的 NI，且范围为-20~19</li>
+<li>一般用户仅可调整自己进程的 NI，且范围为 0~19</li>
+<li>一般用户仅可将 NI 值越调越高，而不能降低</li>
+</ul>
+<p>给予新执行的命令 NI 值：<code>nice [-n number] command</code></p>
+<p>为已存在的进程调整 NI 值：<code>renice [number] PID</code></p>
+<p>NI 值可以在父进程和子进程之间传递。</p>
+<h2 id="查看系统资源信息">查看系统资源信息</h2>
+<h3 id="free查看内存使用情况">free：查看内存使用情况</h3>
+<pre><code>free [-b|-k|-m|-g|-h] [-t] [-s N -c N]
+选项与参数：
+-b：直接输入 free 时，显示的单位是 KBytes，可以使用 b(Bytes)、m(MBytes)、k(KBytes)、g(Gbytes)来指定单位，也可以直接让系统自己指定单位(-h)
+-t：在输出的最终结果，显示物理内存与 swap 的总量
+-s：可以让系统不断刷新显示数据
+-c：与-s 同时处理，指定让 free 列出几次
+
+jss@ubuntu:~$ free -m
+              total        used        free      shared  buff/cache   available
+Mem:           1970         485        1051           1         433        1335
+Swap:           947           0         947
+</code></pre>
+<p>Mem 那一行显示的是物理内存的量，而 Swap 那一行显示的是内存交换分区的量。</p>
+<p>total 是总量，used 是被已被使用的量，free 是剩余可用的量。后面的 shared、buffers、cached 则是在已被使用的量中，用来作为缓冲及缓存的。在执行读、写、执行文件时，这些文件会被系统暂时缓存下来，等待下次运行的时候可以更快速地取出，目的是为了提升系统地读写性能。这些 shraed、buffers、cached 的使用量中，在系统较为忙碌时，可以被发布而继续使用，因此后面有一个 available 数值。</p>
+<p>Linux 系统为了提升系统性能，会将最常使用的或是最近使用的文件数据缓存下来，这样未来系统要使用该文件时，就可以直接由内存中查找取出，而不需要重新读取硬盘，速度上面当然加快了。因此，物理内存被用光是正常的。</p>
+<p>而需要注意的是 swap 的量。一般来说，swap 最好不要被使用，尤其 swap 最好不要被使用超过 20%以上。因为 swap 的性能跟物理内存实在差太多，而系统使用到 swap 说明物理内存不足。</p>
+<h3 id="uname查看系统与内核相关信息">uname：查看系统与内核相关信息</h3>
+<pre><code>uname [-asrmpi]
+选项与参数：
+-a：所有系统相关的信息，包括下面的数据都会被列出来
+-s：系统内核名称
+-r：内核的版本
+-m：本系统的硬件架构，例如 i686 或 x86-64 等
+-p：CPU 的类型，与 -m 类似，只是显示的是 CPU 的类型
+-i：硬件的平台
+
+jss@ubuntu:~$ uname -a
+Linux ubuntu 4.15.0-112-generic #113-Ubuntu SMP Thu Jul 9 23:41:39 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
+</code></pre>
+<p>以举例来说，我的 Linux 主机使用的内核名称为 Linux，而主机名为 ubuntu，内核版本为 4.15.0-112-generic，该内核版本建立的日期为 2020-7-9，适用于 x86-64 及以上等级的硬件架构平台。</p>
+<h3 id="uptime查看系统启动时间与任务负载">uptime：查看系统启动时间与任务负载</h3>
+<pre><code>jss@ubuntu:~$ uptime
+ 11:30:30 up 32 min,  1 user,  load average: 0.00, 0.00, 0.00
+</code></pre>
+<p>这个命令很单纯，就是显示出目前系统已经运行的时间，以及 1、5、15 分钟内的平均负载情况。（其实就是显示 top 命令的最上面一行）</p>
+<h3 id="netstat追踪网络或-socket-文件">netstat：追踪网络或 socket 文件</h3>
+<p>netstat 命令经常被用在网络监控方面。不过在进程管理方面也由很大的作用。基本设，netstat 的输出分为两大部分，分别是与网络较相关的部分和与系统进程叫相关的部分。</p>
+<pre><code>netstat -[atunlp]
+选项与参数：
+-a：将目前系统上所有的连接、监听、socket 信息都列出来
+-t：列出 tcp 网络封包的信息
+-u：列出 udp 网络封包的信息
+-n：不以进程的服务名称，以端口号（port number）来显示
+-l：列出目前正在网络监听（listen）的服务
+-p：列出该网络服务进程的 PID
+
+jss@ubuntu:~$ netstat
+Active Internet connections (w/o servers)  // 与网络较相关的部分
+Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+tcp        0     64 ubuntu:ssh              192.168.1.1:62401       ESTABLISHED
+Active UNIX domain sockets (w/o servers)  // 与系统进程较相关的部分
+Proto RefCnt Flags       Type       State         I-Node   Path
+unix  2      [ ]         DGRAM                    34711    /run/user/1000/systemd/notify
+unix  2      [ ]         DGRAM                    28069    /run/user/120/systemd/notify
+unix  2      [ ]         DGRAM                    19912    /run/systemd/journal/syslog
+unix  18     [ ]         DGRAM                    19914    /run/systemd/journal/dev-log
+unix  9      [ ]         DGRAM                    19924    /run/systemd/journal/socket
+...（中间省略）   
+unix  3      [ ]         STREAM     CONNECTED     28245    /run/user/120/bus
+</code></pre>
+<p>上面的结果显示了两个部分，分别是网络连接以及 Linux 上面的 socket 进程相关性部分。</p>
+<p>首先来看看网络连接情况的部分：</p>
+<ul>
+<li>Proto：网络的封包协议，主要分为 TCP 和 UDP</li>
+<li>Recv-Q：非由用户进程连接到此 socket 的复制的总 Byte 数</li>
+<li>Send-Q：非由远程主机传送过来的 acknowledged 总 Byte 数</li>
+<li>Local Address：本地段的 IP:port 情况</li>
+<li>Foreign Address：远程主机的 IP:port 情况</li>
+<li>State：连接状态，主要有建立（ESTABLISED）以及监听（LISTEN）</li>
+</ul>
+<p>网络连接部分仅有一条数据，它的意思是：通过 TCP 封包的连接，远程的 192.168.1.1:62401 连接到了本地端的 ubuntu:ssh，这条连接状态是建立（ESTABLISHED）的状态。</p>
+<p>除了网络的连接之外，Linux 上的进程还可以接收不同进程所发过来的信息，那就是 Linux 上面的 socket 文件（socket file）。<br>
+上面的结果中 socket 文件的输出字段有：</p>
+<ul>
+<li>Proto：一般就是 unix</li>
+<li>RefCnt：连接到此 socket 的进程数量</li>
+<li>Flags：连接的标识</li>
+<li>Type：socket 存取的类型。主要有确认连接的 STREAM 与不需要确认的 DGRAM 两种</li>
+<li>State：若为 CONNECTED 则表示多个进程之间已经建立连接</li>
+<li>Path：连接到此 socket 的相关进程的路径，或是相关数据输出的路径</li>
+</ul>
+<pre><code>// 找出目前系统上已经在监听的网络连接及其进程
+root@ubuntu:/home/jss# netstat -tulnp
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 127.0.0.53:53           0.0.0.0:*               LISTEN      438/systemd-resolve 
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      685/sshd            
+tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN      512/cupsd           
+tcp6       0      0 :::22                   :::*                    LISTEN      685/sshd            
+tcp6       0      0 ::1:631                 :::*                    LISTEN      512/cupsd           
+udp        0      0 127.0.0.53:53           0.0.0.0:*                           438/systemd-resolve 
+udp        0      0 0.0.0.0:68              0.0.0.0:*                           698/dhclient        
+udp        0      0 0.0.0.0:34978           0.0.0.0:*                           507/avahi-daemon: r 
+udp        0      0 0.0.0.0:5353            0.0.0.0:*                           507/avahi-daemon: r 
+udp        0      0 0.0.0.0:631             0.0.0.0:*                           596/cups-browsed    
+udp6       0      0 :::5353                 :::*                                507/avahi-daemon: r 
+udp6       0      0 :::58335                :::*                                507/avahi-daemon: r
+</code></pre>
+<p>使用此命令可以快速发现当前系统上哪些进程启动了哪些网络端口，对于不需要的网络服务，就可以手动执行<code>kill -9</code>命令结束进程。</p>
+<h3 id="dmesg分析内核产生的信息">dmesg：分析内核产生的信息</h3>
+<p>无论是启动的时候还是系统运行的过程中，只要是内核产生的信息，都会被记录到内存的某个包括区域中。dmesg 这个命令就能够将该区域的信息都出来。因为信息实在太多了，所以执行时可以加<code>| more</code>来使界面暂停。也可以配合<code>grep</code>命令快速找到想要的信息。</p>
+<pre><code>root@ubuntu:/home/jss# dmesg | grep -i disk
+[    0.000000] RAMDISK: [mem 0x312c9000-0x3495bfff]
+[    0.228831] VFS: Disk quotas dquot_6.6.0
+[    1.933245] sd 2:0:0:0: [sda] Attached SCSI disk
+</code></pre>
+<h3 id="vmstat监控系统资源变化">vmstat：监控系统资源变化</h3>
+<pre><code>vmstat [-afsSdp] [延迟 [总计检测次数]]
+选项与参数：
+-a：使用 inactive/active（互动与否）替换 buffer/cache 的内存输出信息
+-f：开机到目前未知，系统复制（fork）的进程数
+-s：将一些事件（启动到目前未知）导致的内存变化情况列表说明
+-S：后面可以接单位，指定显示的数据的单位
+-d：列出磁盘的读写总量统计表
+-p：后面列出分区，可显示该分区的读写总量统计表
+
+// 统计目前主机 CPU 状态，每秒一次，共统计三次
+root@ubuntu:/home/jss# vmstat 1 3
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+ 2  0      0 1074284  45104 401432    0    0    83     5   27   57  0  0 100  0  0
+ 0  0      0 1074276  45104 401432    0    0     0     0   31   44  0  0 100  0  0
+ 0  0      0 1074276  45104 401432    0    0     0     0   29   45  0  0 100  0  0
+</code></pre>
+<p>参数说明：</p>
+<ul>
+<li>
+<p>进程字段（procs）</p>
+<ul>
+<li>r：等待运行中的进程数量</li>
+<li>b：不可被唤醒的进程数量</li>
+</ul>
+<p>这两个项目越多，代表系统越忙碌。</p>
+</li>
+<li>
+<p>内存字段（memery）</p>
+<ul>
+<li>swpd：虚拟内存被使用的容量</li>
+<li>free：未被使用的内存容量</li>
+<li>buff：用于缓冲存储器</li>
+<li>cache：用于高速缓存</li>
+</ul>
+<p>这部分与 free 命令相同。</p>
+</li>
+<li>
+<p>内存交换分区（swap）</p>
+<ul>
+<li>si：由磁盘中将进程取出的容量</li>
+<li>so：由于内存不足而将没用到的进程写入到磁盘的 swap 的容量</li>
+</ul>
+<p>如果 si/so 的值太大，表示内存中的数据经常在磁盘与内存之间传输，系统性能会很差。</p>
+</li>
+<li>
+<p>磁盘读写（I/O）</p>
+<ul>
+<li>bi：由磁盘读入的区块数量</li>
+<li>bo：吸入到磁盘中的区块数量</li>
+</ul>
+<p>这部分值越高，代表系统的 I/O 越忙碌。</p>
+</li>
+<li>
+<p>系统（system）</p>
+<ul>
+<li>in：每秒被中断的进程次数</li>
+<li>cs：每秒切换执行的事件切换次数</li>
+</ul>
+<p>这两个数值越大，代表系统与外界设备的沟通越频繁。包括磁盘、网卡等。</p>
+</li>
+<li>
+<p>CPU</p>
+<ul>
+<li>us：非内核层的 CPU 使用状态</li>
+<li>sy：内核层的 CPU 使用状态</li>
+<li>id：闲置的状态</li>
+<li>wa：等待 I/O 所耗费的 CPU 状态</li>
+<li>st：被虚拟机所使用的 CPU 状态</li>
+</ul>
+</li>
+</ul>
+<pre><code>// 系统上面所有磁盘的读写状态
+root@ubuntu:/home/jss# vmstat -d
+disk- ------------reads------------ ------------writes----------- -----IO------
+       total merged sectors      ms  total merged sectors      ms    cur    sec
+loop0     53      0    2096     136      0      0       0       0      0      0
+loop1     49      0    2096      36      0      0       0       0      0      0
+loop2     72      0     282      96      0      0       0       0      0      0
+loop3     55      0    2128     136      0      0       0       0      0      0
+loop4     60      0     704      92      0      0       0       0      0      0
+loop5     73      0     290      80      0      0       0       0      0      0
+loop6     41      0     672      68      0      0       0       0      0      0
+loop7   9811      0   21550    5928      0      0       0       0      0      0
+sda    13027    670  699778   12644   4844    881   63008   52376      0      5
+sr0        0      0       0       0      0      0       0       0      0      0
+loop8      1      0       2       0      0      0       0       0      0      0
+</code></pre>
+<p>详细字段含义可通过<code>man vmstat</code>命令查看，均与系统读写有关：</p>
+<pre><code>FIELD DESCRIPTION FOR DISK MODE
+   Reads
+       total: Total reads completed successfully
+       merged: grouped reads (resulting in one I/O)
+       sectors: Sectors read successfully
+       ms: milliseconds spent reading
+
+   Writes
+       total: Total writes completed successfully
+       merged: grouped writes (resulting in one I/O)
+       sectors: Sectors written successfully
+       ms: milliseconds spent writing
+
+   IO
+       cur: I/O in progress
+       s: seconds spent for I/O
+</code></pre>
+<h1 id="特殊文件与进程">特殊文件与进程</h1>
+<h2 id="proc-代表的意义">/proc/* 代表的意义</h2>
+<p>之前提到的所谓的进程都使在内存当中，而内存当中的数据都是写入到 /proc/* 这个目录下的。所以可以直接查看 /proc 这个目录当中的文件：</p>
+<pre><code>oot@ubuntu:/home/jss# ls -l /proc
+total 0
+dr-xr-xr-x  9 root             root                           0 8 月  23 10:57 1
+dr-xr-xr-x  9 root             root                           0 8 月  23 10:57 10
+...（中间省略）
+-r--r--r--  1 root             root                           0 8 月  23 13:59 vmstat
+-r--r--r--  1 root             root                           0 8 月  23 13:59 zoneinfo
+</code></pre>
+<p>基本上，目前系统上面各个进程的 PID 都以目录的形式存在于 /proc 当中。比如我们启动所执行的第一个程序 systemd 的 PID 是 1，这个 PID 的所有相关信息都写入 /proc/1/* 当中：</p>
+<pre><code>root@ubuntu:/home/jss# ls -l /proc/1
+total 0
+dr-xr-xr-x 2 root root 0 8 月  23 10:57 attr
+-rw-r--r-- 1 root root 0 8 月  23 14:01 autogroup
+-r-------- 1 root root 0 8 月  23 14:01 auxv
+-r--r--r-- 1 root root 0 8 月  23 10:57 cgroup
+--w------- 1 root root 0 8 月  23 14:01 clear_refs
+-r--r--r-- 1 root root 0 8 月  23 10:57 cmdline
+-rw-r--r-- 1 root root 0 8 月  23 10:57 comm
+-rw-r--r-- 1 root root 0 8 月  23 14:01 coredump_filter
+-r--r--r-- 1 root root 0 8 月  23 14:01 cpuset
+lrwxrwxrwx 1 root root 0 8 月  23 14:01 cwd -&gt; /
+-r-------- 1 root root 0 8 月  23 10:57 environ
+lrwxrwxrwx 1 root root 0 8 月  23 10:57 exe -&gt; /lib/systemd/systemd
+...（以下省略）
+</code></pre>
+<p>里面的数据有很多，比较有趣的文件是：</p>
+<ul>
+<li>cmdline：这个进程被启动的命令串</li>
+<li>environ：这个进程的环境变量内容</li>
+<li>status：该进程的详细信息以及运行状态，包括内存占用状态等</li>
+</ul>
+<p>/proc/ 目录下以数字命名的文件夹都是与特定 PID 相关的内容，如果是针对整个 Linux 相关的参数呢？那就是在 /proc/ 目录下的其他文件，其内容大致如下：</p>
+<table>
+<thead>
+<tr>
+<th>文件名</th>
+<th>文件内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>/proc/cmdline</td>
+<td>加载内核时所执行的相关命令和参数，查看此文件可了解命令时如何启动的</td>
+</tr>
+<tr>
+<td>/proc/cpuinfo</td>
+<td>本机的 CPU 相关信息，包含频率、类型与功能等</td>
+</tr>
+<tr>
+<td>/proc/devices</td>
+<td>这个文件记录了系统各个是主要设备的主要设备代号，与 mknod 有关</td>
+</tr>
+<tr>
+<td>/proc/filesystems</td>
+<td>目前系统已经加载的文件系统</td>
+</tr>
+<tr>
+<td>/proc/interrupts</td>
+<td>目前系统上面的 IRQ 分配状态</td>
+</tr>
+<tr>
+<td>/proc/ioports</td>
+<td>目前系统上面各个设备所配置的 I/O 地址</td>
+</tr>
+<tr>
+<td>/proc/kcore</td>
+<td>它的大小就是内存的大小（不要去读它）</td>
+</tr>
+<tr>
+<td>/proc/loadavg</td>
+<td>还记得 top 以及 uptime？上面的三个平均数就是记录在这里的</td>
+</tr>
+<tr>
+<td>/proc/meminfo</td>
+<td>使用 free 列出的内存信息，实际上记录在这里</td>
+</tr>
+<tr>
+<td>/proc/modules</td>
+<td>已经加载的模块列表，也可以想成是驱动程序</td>
+</tr>
+<tr>
+<td>/proc/mounts</td>
+<td>系统已经挂载的数据</td>
+</tr>
+<tr>
+<td>/proc/swaps</td>
+<td>系统挂载的内存使用的硬盘分区</td>
+</tr>
+<tr>
+<td>/proc/partitions</td>
+<td>使用 fdisk -l 列出的硬盘分区，实际上记录在这里</td>
+</tr>
+<tr>
+<td>/proc/uptime</td>
+<td>使用 uptime 出现的信息，实际上记录在这里</td>
+</tr>
+<tr>
+<td>/proc/version</td>
+<td>内核的版本，就是用 uname -a 显示的内容</td>
+</tr>
+<tr>
+<td>/proc/bus/*</td>
+<td>一些总线的设备，还有 USB 的设备记录在此</td>
+</tr>
+</tbody>
+</table>
+<p>可以使用 cat 命令查看上面这些文件，看过文件内容后，就会有更深的理解。</p>
+<h2 id="进程使用的文件-使用文件的进程">进程使用的文件 &amp; 使用文件的进程</h2>
+<h3 id="fuser通过文件找出正在使用该文件的进程">fuser：通过文件找出正在使用该文件的进程</h3>
+<pre><code>fuser [-umv] [-k [i] [signal]] file/dir
+选项与参数：
+-u：除了进程的 PID 外，同时列出该进程的拥有者
+-m：后面接的文件名会主动提到该文件系统的最顶层，对 umount 不成功很有效
+-v：可以列出每个文件与进程还有命令的完整相关性
+-k：找出使用该文件/目录的 PID，并试图以 SIGKILL 这个信号给予该 PID
+-i：必须与-k 配合，在执行前进行二次确认
+-signal：例如-1、-15 等，若不加则是默认 SIGKILL(-9)
+
+root@ubuntu:~# fuser -uv .
+                     USER        PID ACCESS COMMAND
+/root:               root       1571 ..c.. (root)bash
+</code></pre>
+<p>通过 fuser 命令，可以找出使用指定文件、目录的进程，让我们了解到某个文件/文件夹目前正在被哪些进程所使用。</p>
+<h3 id="lsof列出被进程所使用的文件名称">lsof：列出被进程所使用的文件名称</h3>
+<pre><code>lsof [-aUu] [+d]
+选项与参数：
+-a：多项数据需要同时成立才显示出结果时
+-U：仅列出 UNIX-like 系统的 socket 文件类型
+-u：后面接 username，列出使用者相关进程所使用的文件
++d：后面接目录，找出某个目录下面已经被使用的文件
+</code></pre>
+<p>直接使用该命令，将得到一大堆结果，因为该命令显示了所有进程及其所使用的文件。</p>
+<p>配合各项参数以及 grep 命令使用，可找出某个进程使用的文件：</p>
+<pre><code>// 列出属于 root 的 bash 这个程序所使用的文件
+root@ubuntu:~# lsof -u root | grep bash
+bash      1571 root  cwd       DIR                8,1     4096     131074 /root
+bash      1571 root  rtd       DIR                8,1     4096          2 /
+bash      1571 root  txt       REG                8,1  1113504     262481 /bin/bash
+bash      1571 root  mem       REG                8,1    47568     798227 /lib/x86_64-linux-gnu/libnss_files-2.27.so
+bash      1571 root  mem       REG                8,1    97176     798167 /lib/x86_64-linux-gnu/libnsl-2.27.so
+bash      1571 root  mem       REG                8,1    47576     798289 /lib/x86_64-linux-gnu/libnss_nis-2.27.so
+bash      1571 root  mem       REG                8,1    39744     798224 /lib/x86_64-linux-gnu/libnss_compat-2.27.so
+bash      1571 root  mem       REG                8,1  4808688     397496 /usr/lib/locale/locale-archive
+bash      1571 root  mem       REG                8,1  2030544     798087 /lib/x86_64-linux-gnu/libc-2.27.so
+bash      1571 root  mem       REG                8,1    14560     798099 /lib/x86_64-linux-gnu/libdl-2.27.so
+bash      1571 root  mem       REG                8,1   170784     800215 /lib/x86_64-linux-gnu/libtinfo.so.5.9
+bash      1571 root  mem       REG                8,1   170960     793808 /lib/x86_64-linux-gnu/ld-2.27.so
+bash      1571 root  mem       REG                8,1    26376     538353 /usr/lib/x86_64-linux-gnu/gconv/gconv-modules.cache
+bash      1571 root    0u      CHR              136,0      0t0          3 /dev/pts/0
+bash      1571 root    1u      CHR              136,0      0t0          3 /dev/pts/0
+bash      1571 root    2u      CHR              136,0      0t0          3 /dev/pts/0
+bash      1571 root  255u      CHR              136,0      0t0          3 /dev/pts/0
+</code></pre>
+<h3 id="pidof找出某个正在执行的进程的-pid">pidof：找出某个正在执行的进程的 PID</h3>
+<pre><code>pidof [-sx] program name
+选项与参数：
+-s：仅列出一个 PID
+-x：同时列出该 program name 可能的 PPID
+</code></pre>
+<h1 id="参考">参考</h1>
+<blockquote>
+<p>《鸟哥的 LINUX 私房菜基础学习篇（第四版）》</p>
+</blockquote>
+
+                </div>
+            </article>
+        </div>
+
+        
+            <div class="next-post">
+                <div class="next gt-c-content-color-first">下一篇</div>
+                <a href="https://hill-jiang.github.io/post/Streamlit：不写前端开发WEB应用/" class="post-title gt-a-link">
+                    Streamlit：不写前端开发WEB应用
+                </a>
+            </div>
+        
+
+        
+
+        
+
+        
+
+        <div class="site-footer gt-c-content-color-first">
+    <div class="slogan gt-c-content-color-first">惟学无际</div>
+    <div class="social-container">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    </div>
+    <div class="footer-info">
+        Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+    </div>
+    <div>
+        Theme by <a href="https://imhanjie.com/" target="_blank">imhanjie</a>, Powered by <a
+                href="https://github.com/getgridea/gridea" target="_blank">Gridea | <a href="https://hill-jiang.github.io/atom.xml" target="_blank">RSS</a></a>
+    </div>
+</div>
+
+<script>
+  hljs.initHighlightingOnLoad()
+</script>
+
+    </div>
+</div>
+</body>
+</html>

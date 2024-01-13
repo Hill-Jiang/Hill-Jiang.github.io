@@ -1,0 +1,266 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<meta name="description" content=""/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>安卓 APP 抓包探索 | Hill&#39;s Blog</title>
+
+<link rel="shortcut icon" href="https://hill-jiang.github.io/favicon.ico?v=1705114048924">
+
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hill-jiang.github.io/styles/main.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dockerfile.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dart.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.27.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+<!-- DEMO JS -->
+<!--<script src="media/scripts/index.js"></script>-->
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.css">
+</head>
+<body>
+<div class="main gt-bg-theme-color-first">
+    <nav class="navbar navbar-expand-lg">
+    <div class="navbar-brand">
+        <img class="user-avatar" src="/images/avatar.png" alt="头像">
+        <div class="site-name gt-c-content-color-first">
+            Hill&#39;s Blog
+        </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-bars gt-c-content-color-first" style="font-size: 18px"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="navbar-nav mr-auto" style="text-align: center">
+            
+                <div class="nav-item">
+                    
+                        <a href="/" class="menu gt-a-link">
+                            首页
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/archives" class="menu gt-a-link">
+                            归档
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/tags" class="menu gt-a-link">
+                            标签
+                        </a>
+                    
+                </div>
+            
+        </div>
+        <div style="text-align: center">
+            <form id="gridea-search-form" style="position: relative" data-update="1705114048924" action="/search/index.html">
+                <input class="search-input" autocomplete="off" spellcheck="false" name="q" placeholder="搜索文章" />
+                <i class="fas fa-search gt-c-content-color-first" style="position: absolute; top: 9px; left: 10px;"></i>
+            </form>
+        </div>
+    </div>
+</nav>
+
+    <div class="post-container">
+        <div class="post-detail gt-bg-theme-color-second">
+            <article class="gt-post-content">
+                <h2 class="post-title">
+                    安卓 APP 抓包探索
+                </h2>
+                <div class="post-info">
+                    <time class="post-time gt-c-content-color-first">
+                        · 2022-07-01 ·
+                    </time>
+                    
+                        <a href="https://hill-jiang.github.io/tag/PNIwzxfLqw/" class="post-tags">
+                            # 网络
+                        </a>
+                    
+                        <a href="https://hill-jiang.github.io/tag/SNPxxRPwXa/" class="post-tags">
+                            # Android
+                        </a>
+                    
+                </div>
+                <div class="post-content">
+                    <h2 id="背景">背景</h2>
+<p>最近有个项目模块，支持 100 路并发的视频分享预览，需进行测试覆盖。</p>
+<p>找 100 个设备同时登录不太可能，即使在 PC 上用模拟器，按照之前的经验，性能比较好的 PC 一台也就能跑 10 个左右，凑不出那么多空闲 PC 用于测试。于是想到用脚本模拟 APP 从登录到预览的整个流程，只拉流不解码，对性能要求比较低，理论上一台 PC 就能实现。</p>
+<p>申了一圈文档权限，发现从文档出发整理整个流程还是比较困难，所以决定先用实际 APP 抓包，再结合文档整理接口流程。</p>
+<h2 id="代理">代理</h2>
+<p>说到抓包可能最先想到的就是 Wireshark，诚然用 Wireshark 配置无线抓包、或是在设备上直接跑 tcpdump 再导出成抓包文件用 Wireshark 打开，是可以抓到所有 APP 发送和接受的请求的。但问题在于，这部分请求是 HTTPS 加密的，我们无法直接看到交互内容，此方法也就行不通。</p>
+<figure data-type="image" tabindex="1"><img src="https://hill-jiang.github.io/post-images/1696234727044.png" alt="" loading="lazy"></figure>
+<blockquote>
+<p>HTTPS 的数据包虽然能抓到，但无法查看内容</p>
+</blockquote>
+<p>移动端抓包工具基本采用的都是中间人攻击的方式（MITM），简单来说就是在服务器和客户端中间做代理，截获两边发往对端的数据。</p>
+<p>比较有名的抓包工具，例如 Fiddler、Charles 等，可以对 APP 进行抓包，其原理是抓包功能工具开一个 HTTP 代理，将手机与 PC 连入同一网络，配置手机的代理为工具的代理端口，就可以实现中间人攻击抓包。</p>
+<p>但是，我司的物联 APP 并不使用安卓系统的 HTTP 代理，而是在 APP 内部自建 Client 直接与服务器建立 SSL 连接进行交互，所以此时即使配置了代理，流量也不会走到代理工具上去，也就抓不到包。</p>
+<h2 id="vpn">VPN</h2>
+<p>直接的 HTTP 代理行不通，还有 VPN 的方式，通过该方式在客户端与抓包工具之间的 VPN 连接，实现所有流量经过抓包工具，从而进行拦截。</p>
+<p>安卓端可以直接用 HttpCanary 来自建 VPN 服务器进行抓包；PC 端也有类似的工具，推荐 HTTP Toolkit，界面友好功能强大。</p>
+<h2 id="certificate-pinning">certificate pinning</h2>
+<p>无论是代理还是 VPN，想对 HTTPS 的加密数据进行解析，都必须先在客户端系统上安装由抓包工具提供的虚假 CA 证书。</p>
+<p>客户端在发送 HTTPS 请求时，系统会先对服务器发来的证书进行校验，由于已经在系统上安装了抓包工具提供的证书，所以校验自然能通过。</p>
+<p>然而我们的物联 APP，并不适用系统的证书对服务器发来的证书进行校验，而是用了称为 certificate pinning 的方法，使用内置的自签证书来对服务器证书进行校验，此时校验失败，客户端并不信任抓包工具发来的证书。结果就是客户端根本不会把数据发给我们的抓包工具，在 APP 上表现就是直接提示“网络错误”。</p>
+<figure data-type="image" tabindex="2"><img src="https://hill-jiang.github.io/post-images/1696234733710.png" alt="" loading="lazy"></figure>
+<blockquote>
+<p>可以看到手机的其他数据包都能抓到，但 TP-LINK 物联 APP 相关的请求未发送出去。</p>
+</blockquote>
+<h2 id="frida">Frida</h2>
+<p>那么有没有解决方案呢，肯定是有的，可以使⽤例如 xposed 框架 + justtrustme 模块或 VirtualApp 等⼯具对证书验证的函数进⾏ hook，使其在证书校验时始终返回成功，即可绕过证书验证。但是按照其提供的参考链接中的方法，没能直接 hook 到校验证书的 API。</p>
+<p>在 HTTP Toolkit 的官网，推荐是使用 Frida 工具绕过 certificate pinning 的验证，原理基本相同。此部分还需要对手机进行 root，使用 adb 连接手机（root 有风险，操作需谨慎，我是找了一个不用的旧手机）。</p>
+<p>但是我按照步骤安装配置完，并行不通。</p>
+<p>研发提到<code>app是在native层使⽤openssl做的证书验证，所以justtrustme没有hook到</code>，这时我大概明白了，证书验证的部分并没有写在 java 源码里，所以 hook 不出来，于是我就去搜索“APP native层openssl证书验证”，没想到居然找到一篇对我司安防 APP 进行抓包的博客：<a href="http://www.52bug.cn/cracktool/6380.html">逆向破解 | 利用Frida手动绕过Android APP证书校验</a>。</p>
+<p>他同样是用 Frida 工具进行 hook，我直接 copy 了他的 js 脚本：</p>
+<pre><code>Java.perform(function(){
+	var nativePointer = Module.findExportByName(&quot;libIPCAppContextJNI.so&quot;, &quot;X509_verify_cert&quot;);
+	console.log(&quot;-------------Start-------------&quot;);
+	Interceptor.attach(nativePointer, {
+		onEnter: function(args){
+		// 此处是修改入参要做的逻辑，在这里不需要修改，留空即可
+		},
+		onLeave: function(retval){
+			console.log(&quot;----------leaving-------------&quot;)
+			// 打印原始的返回值
+			console.log(retval);
+			// replace修改返回值
+			retval.replace(0x1)
+			// 再次打印出来验证一下修改是否成功
+			console.log(retval);
+		}
+	});
+});
+</code></pre>
+<p>由于有注释，理解起来也不难，就是在需要对证书进行校验时，让它直接返回校验成功。</p>
+<p>跑了一遍，直接报错<code>expect a pointer</code>，在 Frida 中直接执行<code>Module.findExportByName(&quot;libIPCAppContextJNI.so&quot;, &quot;X509_verify_cert&quot;)</code>返回了<code>null</code>，感觉应该是 APP 版本更新修改了一些依赖库。</p>
+<p>再找了一些其他人写的用 Frida 绕过 certificate pinning 验证的 js 脚本进行参考，把上面的脚本修改成：</p>
+<pre><code>Java.perform(function() {
+    const System = Java.use(&quot;java.lang.System&quot;);
+    const Runtime = Java.use(&quot;java.lang.Runtime&quot;);
+    const SystemLoad_2 = System.loadLibrary.overload(&quot;java.lang.String&quot;);
+    const VMStack = Java.use(&quot;dalvik.system.VMStack&quot;);
+
+    SystemLoad_2.implementation = function(library) {
+        console.log(&quot;Loading dynamic library =&gt; &quot; + library);
+        try {
+            const loaded = Runtime.getRuntime().loadLibrary0(VMStack.getCallingClassLoader(), library);
+            // here your hook
+            Interceptor.attach(Module.findExportByName(&quot;lib&quot;+library+&quot;.so&quot;, &quot;X509_verify_cert&quot;), {
+                onEnter: function(args) {
+                    // 不做任何事
+                },
+                onLeave: function(retval){
+                	// 如果校验失败
+                    if(retval == 0x0) {
+                        console.log(library);
+                        // replace修改返回值
+                        retval.replace(0x1);
+                        // 再次打印出来验证一下修改是否成功
+                        console.log(retval);
+                    }
+                }
+            });
+            return loaded;
+        } catch(ex) {
+            console.log(ex);
+        }
+    };
+});
+</code></pre>
+<p>就是在所有库调用时，都判断证书校验部分的返回值，如果返回校验失败就手动改成校验成功，用此方法，终于是抓到了我们的 APP 发出去的包，然而：</p>
+<figure data-type="image" tabindex="3"><img src="https://hill-jiang.github.io/post-images/1696234742850.png" alt="" loading="lazy"></figure>
+<p>看到 Status 鲜红的 502，我的心又凉了半截。再一看右边的说明，是服务器的 HTTPS 证书未被信任，这可太熟悉了，和我们的 VMS 系统首次访问浏览器提示”你的连接不是专用连接“一个道理，忽略就行了，只可惜这个工具让我掏钱”Get Pro“版本才能继续。</p>
+<p>本来想着反正已经能抓到 APP 发出去的请求了，看不到响应也问题不大，但此时发现 APP 卡死了，过了一会直接闪退，想了一下应该是发出去的请求都没有收到响应，可能就卡在某一步了，依赖前面的响应的请求，后面也没法发，看来工作还得继续。</p>
+<p>既然我已经用 Frida 在客户端上实现了绕过证书验证，那说明抓包工具应该已经能实现抓包了，只不过是 HTTP Toolkit 这个中间人不给我转发，我拿不到响应。于是又想到 HttpCanary。</p>
+<p>在 HttpCanary 上一试，还是没抓到，但是有很多 Warnning，点开 Warning：</p>
+<figure data-type="image" tabindex="4"><img src="https://hill-jiang.github.io/post-images/1696234755283.png" alt="" loading="lazy"></figure>
+<p>解决方案是用 Xposed 模块 JustTrustMe 解除证书固定，这部分我已经用 Frida 做了，那么我导入该自签证书应该就可以了吧：</p>
+<figure data-type="image" tabindex="5"><img src="https://hill-jiang.github.io/post-images/1696234767981.png" alt="" loading="lazy"></figure>
+<p>终于，想要的结果出现了：</p>
+<figure data-type="image" tabindex="6"><img src="https://hill-jiang.github.io/post-images/1696234775272.png" alt="" loading="lazy"></figure>
+<h2 id="总结">总结</h2>
+<ul>
+<li>APP 的 HTTPS 抓包常用 Fiddler、Charles 等工具，但我司物联 APP 不走系统代理，则抓不到包</li>
+<li>用 HttpCanary、HTTP Toolkit 等可以自建 VPN 进行流量拦截抓包，但我司物联 APP 用了 certificate pinning，使用自签证书进行校验，导致校验失败抓不到包</li>
+<li>使用 xposed + justtrustme 或 Frida 等工具对证书验证的函数进⾏hook，使其始终返回成功可绕过证书验证，但我司物联 APP 的证书验证并未写在 Java 层，导致 hook 不到</li>
+<li>Frida 可直接对调用的库进行 hook，使用此方法可成功绕过证书验证</li>
+<li>HTTP Toolkit 工具免费版对于证书未信任的服务器不会发送请求</li>
+<li>HttpCanary 在绕过证书验证后可发送请求并接受响应，能正常抓包</li>
+</ul>
+<p>至此，在折腾了一大番之后，完成了想要抓个包的小目标。</p>
+<p>只能说学无止境，对不了解的领域还是要多探索积累。</p>
+<h2 id="参考">参考</h2>
+<p>https://httptoolkit.tech/docs/guides/android/</p>
+<p>https://httptoolkit.tech/blog/frida-certificate-pinning/</p>
+<p>http://www.52bug.cn/cracktool/6380.html</p>
+<p>https://stackoverflow.com/questions/60794720/frida-hook-native-method-failure-on-android-q</p>
+
+                </div>
+            </article>
+        </div>
+
+        
+            <div class="next-post">
+                <div class="next gt-c-content-color-first">下一篇</div>
+                <a href="https://hill-jiang.github.io/post/证件校验规则研究/" class="post-title gt-a-link">
+                    证件校验规则研究
+                </a>
+            </div>
+        
+
+        
+
+        
+
+        
+
+        <div class="site-footer gt-c-content-color-first">
+    <div class="slogan gt-c-content-color-first">惟学无际</div>
+    <div class="social-container">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    </div>
+    <div class="footer-info">
+        Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+    </div>
+    <div>
+        Theme by <a href="https://imhanjie.com/" target="_blank">imhanjie</a>, Powered by <a
+                href="https://github.com/getgridea/gridea" target="_blank">Gridea | <a href="https://hill-jiang.github.io/atom.xml" target="_blank">RSS</a></a>
+    </div>
+</div>
+
+<script>
+  hljs.initHighlightingOnLoad()
+</script>
+
+    </div>
+</div>
+</body>
+</html>

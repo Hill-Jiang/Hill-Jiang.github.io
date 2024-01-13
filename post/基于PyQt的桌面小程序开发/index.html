@@ -1,0 +1,284 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<meta name="description" content=""/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>基于 PyQt 的桌面小程序开发 | Hill&#39;s Blog</title>
+
+<link rel="shortcut icon" href="https://hill-jiang.github.io/favicon.ico?v=1705114048924">
+
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hill-jiang.github.io/styles/main.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dockerfile.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dart.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.27.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+<!-- DEMO JS -->
+<!--<script src="media/scripts/index.js"></script>-->
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.css">
+</head>
+<body>
+<div class="main gt-bg-theme-color-first">
+    <nav class="navbar navbar-expand-lg">
+    <div class="navbar-brand">
+        <img class="user-avatar" src="/images/avatar.png" alt="头像">
+        <div class="site-name gt-c-content-color-first">
+            Hill&#39;s Blog
+        </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-bars gt-c-content-color-first" style="font-size: 18px"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="navbar-nav mr-auto" style="text-align: center">
+            
+                <div class="nav-item">
+                    
+                        <a href="/" class="menu gt-a-link">
+                            首页
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/archives" class="menu gt-a-link">
+                            归档
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/tags" class="menu gt-a-link">
+                            标签
+                        </a>
+                    
+                </div>
+            
+        </div>
+        <div style="text-align: center">
+            <form id="gridea-search-form" style="position: relative" data-update="1705114048924" action="/search/index.html">
+                <input class="search-input" autocomplete="off" spellcheck="false" name="q" placeholder="搜索文章" />
+                <i class="fas fa-search gt-c-content-color-first" style="position: absolute; top: 9px; left: 10px;"></i>
+            </form>
+        </div>
+    </div>
+</nav>
+
+    <div class="post-container">
+        <div class="post-detail gt-bg-theme-color-second">
+            <article class="gt-post-content">
+                <h2 class="post-title">
+                    基于 PyQt 的桌面小程序开发
+                </h2>
+                <div class="post-info">
+                    <time class="post-time gt-c-content-color-first">
+                        · 2022-07-01 ·
+                    </time>
+                    
+                        <a href="https://hill-jiang.github.io/tag/X1d9ds5kfn/" class="post-tags">
+                            # Python
+                        </a>
+                    
+                        <a href="https://hill-jiang.github.io/tag/k0ez3Ah484/" class="post-tags">
+                            # 应用程序
+                        </a>
+                    
+                </div>
+                <div class="post-content">
+                    <h2 id="pyqt简介">PyQt简介</h2>
+<p>PyQt 是创建 GUI 应用程序的一个工具包，融合了 Python 和 Qt 库，是 Python 中 GUI 设计最强大的库之一，具有界面美观、跨平台、文档教程多等优点。</p>
+<p>PyQt 有功能丰富函数和方法，基本上能够实现绝大部分设计要求；但正是因为此，其功能复杂，接口繁多，学习成本较高。</p>
+<p>PyQt 的主要模块有：</p>
+<ul>
+<li>QtGui：涵盖了多种基本图形的功能的类</li>
+<li>QtWidgets：包含整套的 UI 元素控件</li>
+<li>QtCore：涵盖了核心的非 GUI 功能，可用来处理时间、文件、目录、数据类型、文本流、链接等对象</li>
+</ul>
+<p>刚开始上手 PyQt 的时候，画控件成为了很令人头疼的问题，使用代码进行控件布局绘制和调整非常不直观，比较费时间。后来发现了简单的控件绘制工具——Qt Designer。Qt Designer 是交互式可视化 GUI 设计工具，可以帮助我们快速绘制 UI 界面。</p>
+<p>下面就以我开发的一个用来测试 TDCP 和 TUMS 接口的小程序为例，介绍 PyQt 的开发流程。</p>
+<h2 id="qt-designer">Qt Designer</h2>
+<h3 id="安装">安装</h3>
+<p>安装 PyQt5 和 QtDesigner</p>
+<pre><code>pip install PyQt5
+pip install PyQt5-tools
+</code></pre>
+<p>安装完后，Qt Designer 的路径为：<code>Python安装路径\Lib\site-packages\qt5_applications\Qt\bin\designer.exe</code></p>
+<h3 id="ui-设计">UI 设计</h3>
+<p>启动后，首先新建一个 Widget</p>
+<figure data-type="image" tabindex="1"><img src="https://hill-jiang.github.io/post-images/1696234691879.png" alt="" loading="lazy"></figure>
+<p>然后将左侧 Widget Box 中的控件按照个人设计拖拽到打开的窗口中，自行修改大小和布局，双击修改名称，并且可以在右侧的属性编辑器中根据需要修改属性（仿佛回到了高中信息技术课上学 VB）。</p>
+<p>设计过程中，使用快捷键 Ctrl-R 可以快速预览。</p>
+<p>我设计完的页面如下：</p>
+<figure data-type="image" tabindex="2"><img src="https://hill-jiang.github.io/post-images/1696234697310.png" alt="" loading="lazy"></figure>
+<h3 id="转化为-py-文件">转化为 py 文件</h3>
+<p>完成设计后，保存输出的文件是 .ui 格式的，可以使用 PyUIC 工具转为 .py 文件：</p>
+<pre><code>pyuic5 -o 目标文件名.py 源文件名.ui
+</code></pre>
+<h2 id="程序设计">程序设计</h2>
+<h3 id="基本框架">基本框架</h3>
+<p>上述 ui 文件转化完的 py 文件中，仅有一个<code>Ui_Form</code>的类，包含<code>setupUi</code>和<code>retranslateUi</code>两个方法，没有程序入口，并不能直接运行。</p>
+<p>按照视图与逻辑分离的原则，我们再编写一个新的类来调用这个方法。</p>
+<pre><code class="language-python">import sys
+from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5 import QtCore, QtWidgets
+
+
+class Ui_Form(object):
+	...
+
+
+class MyWindow(QMainWindow, Ui_Form):
+	def __init__(self):
+        QMainWindow.__init__(self)
+        self.setupUi(self)
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = MyWindow()
+    window.show()
+    sys.exit(app.exec_())
+
+</code></pre>
+<p>此时，运行该脚本就会出现我们绘制的 UI 窗口了：</p>
+<figure data-type="image" tabindex="3"><img src="https://hill-jiang.github.io/post-images/1696234706393.png" alt="" loading="lazy"></figure>
+<h3 id="ui调整">UI调整</h3>
+<p>由于界面上显示的各类元素本质上都在 python 代码中定义和实现，所以我们可以在代码中对其进行调整，比如修改程序的标题，只需要在<code>retranslateUi</code>方法中修改一行代码：</p>
+<pre><code>Form.setWindowTitle(_translate(&quot;Form&quot;, &quot;简易发包工具For TUMS/TDCP&quot;))
+</code></pre>
+<h3 id="控件逻辑添加">控件逻辑添加</h3>
+<p>上述我们完成的部分只是一个 UI 界面，并没有任何功能，因此，我们还需要在程序中为各类控件添加逻辑，才能实现我们想要的功能。</p>
+<p>下面列举一些常用的方法：</p>
+<ul>
+<li>
+<p>将点击按钮绑定到某一方法</p>
+<pre><code>pushButton.clicked.connect(method_name)
+
+def method_name():
+	...
+</code></pre>
+</li>
+<li>
+<p>获取输入框内容</p>
+<pre><code>line = lineEdit.text()
+text = textEdit.toPlainText()
+</code></pre>
+</li>
+<li>
+<p>设置文本输入框内容</p>
+<pre><code>textEdit.setText(text)
+</code></pre>
+</li>
+</ul>
+<p>至于如何将各类控件逻辑组合起来，实现完整的功能，属于 python 程序设计的部分，在此不做说明。</p>
+<h2 id="打包与发布">打包与发布</h2>
+<p>使用 pyinstaller 进行打包，可以把源文件打包成 exe 文件，这样使用时不用依赖 python 环境，可以直接拷贝 exe 文件到其他 Windows PC 上使用。</p>
+<h3 id="打包方法">打包方法</h3>
+<p>先安装 pyinstaller：</p>
+<pre><code>pip install pywin32
+pip install pyinstaller
+</code></pre>
+<p>然后使用 pyinstaller 打包</p>
+<pre><code>pyinstaller -F -w postTool.py
+</code></pre>
+<p>完成后，会在当前目录下生成一个 spec 文件和<code>build</code>、<code>dist</code>两个文件夹，可执行的 exe 文件就在<code>dist</code>文件夹中，双击即可运行。</p>
+<p>在此提供我写的小工具主程序部分代码和可执行 exe 文件：</p>
+<p>发送 TDCP/TUMS 请求部分由于涉及到相关登录校验规则，在此不提供。</p>
+<h3 id="缺陷">缺陷</h3>
+<p>使用 pyinstaller 打包会把各种依赖库都一起打包进去，导致生成的 exe 文件很大，且启动速度很慢。我写完的程序打包好占用接近 35 MB，启动大约需要 5 秒。</p>
+<p>尝试过各种优化方式，比如建立 python 虚拟环境减少打包依赖、换用其他打包方式等，效果都不明显。而在测试部广泛使用的 Windows 小程序<code>postData.exe</code>（基于 MFC 开发），同样用来发送 TDCP 请求，大小只有 100 K，且启动很快。</p>
+<blockquote>
+<p>MFC 是微软提供的一个 C++ 类库</p>
+</blockquote>
+<p>由此体会到 Python 的局限性还是很大啊。</p>
+<h2 id="后续">后续</h2>
+<p>最近因为装的 Python 库越来越多，导致新开发的 PyQt GUI 工具打包越来越大，所以还是用虚拟环境打包吧，补充一下虚拟环境打包方法：</p>
+<ol>
+<li>安装 virtualenvs</li>
+</ol>
+<pre><code>pip install virtualenv
+</code></pre>
+<ol start="2">
+<li>进入项目根路径，创建虚拟环境</li>
+</ol>
+<pre><code>virtualenv venv
+</code></pre>
+<ol start="3">
+<li>激活虚拟环境</li>
+</ol>
+<pre><code>cd venv/Scripts
+activate
+</code></pre>
+<p>执行完后，可以看到命令行名称前出现了<code>(venv)</code>，说明虚拟环境激活成功<br>
+4. 安装项目依赖库<br>
+因为新激活的虚拟环境不包含任何依赖库，所以需要先手动将该工具项目所需要的依赖安装一下，直接用<code>pip</code>安装即可，装完之后手动执行一下<code>python xxx.py</code>看看能不能运行<br>
+5. 打包<br>
+回到项目根路径</p>
+<pre><code>pyinstaller -p venv/Scripts -F -w xxx.py
+</code></pre>
+
+                </div>
+            </article>
+        </div>
+
+        
+            <div class="next-post">
+                <div class="next gt-c-content-color-first">下一篇</div>
+                <a href="https://hill-jiang.github.io/post/安卓 APP 抓包探索/" class="post-title gt-a-link">
+                    安卓 APP 抓包探索
+                </a>
+            </div>
+        
+
+        
+
+        
+
+        
+
+        <div class="site-footer gt-c-content-color-first">
+    <div class="slogan gt-c-content-color-first">惟学无际</div>
+    <div class="social-container">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    </div>
+    <div class="footer-info">
+        Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+    </div>
+    <div>
+        Theme by <a href="https://imhanjie.com/" target="_blank">imhanjie</a>, Powered by <a
+                href="https://github.com/getgridea/gridea" target="_blank">Gridea | <a href="https://hill-jiang.github.io/atom.xml" target="_blank">RSS</a></a>
+    </div>
+</div>
+
+<script>
+  hljs.initHighlightingOnLoad()
+</script>
+
+    </div>
+</div>
+</body>
+</html>

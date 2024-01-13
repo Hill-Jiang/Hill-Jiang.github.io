@@ -1,0 +1,391 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<meta name="description" content=""/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>不合理的设计实现是如何引发性能问题的 | Hill&#39;s Blog</title>
+
+<link rel="shortcut icon" href="https://hill-jiang.github.io/favicon.ico?v=1705114048924">
+
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hill-jiang.github.io/styles/main.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dockerfile.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dart.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.27.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+<!-- DEMO JS -->
+<!--<script src="media/scripts/index.js"></script>-->
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.css">
+</head>
+<body>
+<div class="main gt-bg-theme-color-first">
+    <nav class="navbar navbar-expand-lg">
+    <div class="navbar-brand">
+        <img class="user-avatar" src="/images/avatar.png" alt="头像">
+        <div class="site-name gt-c-content-color-first">
+            Hill&#39;s Blog
+        </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-bars gt-c-content-color-first" style="font-size: 18px"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="navbar-nav mr-auto" style="text-align: center">
+            
+                <div class="nav-item">
+                    
+                        <a href="/" class="menu gt-a-link">
+                            首页
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/archives" class="menu gt-a-link">
+                            归档
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/tags" class="menu gt-a-link">
+                            标签
+                        </a>
+                    
+                </div>
+            
+        </div>
+        <div style="text-align: center">
+            <form id="gridea-search-form" style="position: relative" data-update="1705114048924" action="/search/index.html">
+                <input class="search-input" autocomplete="off" spellcheck="false" name="q" placeholder="搜索文章" />
+                <i class="fas fa-search gt-c-content-color-first" style="position: absolute; top: 9px; left: 10px;"></i>
+            </form>
+        </div>
+    </div>
+</nav>
+
+    <div class="post-container">
+        <div class="post-detail gt-bg-theme-color-second">
+            <article class="gt-post-content">
+                <h2 class="post-title">
+                    不合理的设计实现是如何引发性能问题的
+                </h2>
+                <div class="post-info">
+                    <time class="post-time gt-c-content-color-first">
+                        · 2024-01-13 ·
+                    </time>
+                    
+                        <a href="https://hill-jiang.github.io/tag/At_GYpVA5S/" class="post-tags">
+                            # 其他
+                        </a>
+                    
+                </div>
+                <div class="post-content">
+                    <h2 id="背景">背景</h2>
+<p>前段时间出了不少性能相关的市场反馈，某大型连锁店客户在使用云平台时频繁出现卡顿现象，基本不可用；甚至在其使用期间，由于大量占用了系统资源服务，导致后端接口响应时间明显边长，影响了其他用户的支持使用</p>
+<h2 id="客户配置信息">客户配置信息</h2>
+<ul>
+<li>
+<p>连锁店项目，所有设备放在同一个项目中进行管理</p>
+</li>
+<li>
+<p>每个一级区域对应一个城市，每个二级区域对应一个门店</p>
+</li>
+<li>
+<p>每个门店添加一个NVR，关联若干IPC通道</p>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>设备</th>
+<th>数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>总监控点数</td>
+<td>10000</td>
+</tr>
+<tr>
+<td>NVR</td>
+<td>2000</td>
+</tr>
+<tr>
+<td>每个 NVR 下的通道数</td>
+<td>1 到 16</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>区域</th>
+<th>数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一级区域</td>
+<td>500</td>
+</tr>
+<tr>
+<td>二级区域</td>
+<td>每个一级区域下包含 1-50 个二级区域，共 2000 个二级区域</td>
+</tr>
+</tbody>
+</table>
+<h2 id="问题原因">问题原因</h2>
+<p>假设有以下带有层级的树状区域结构：</p>
+<pre><code class="language-Plain">|-一级区域1
+    |-二级区域1-1
+    |-二级区域1-2
+    |-二级区域1-3
+    ...
+|-一级区域2
+    |-二级区域2-1
+    |-二级区域2-2
+    |-二级区域2-3
+    ...
+...
+</code></pre>
+<p>有多个一级区域，且每个区域下有多个二级区域</p>
+<p>进入设备管理页面，前端会发送如下请求给后端：</p>
+<table>
+<thead>
+<tr>
+<th>请求</th>
+<th>请求参数</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>getRootRegions</td>
+<td>-</td>
+<td>获取所有一级区域</td>
+</tr>
+<tr>
+<td>getRegionChildren</td>
+<td>rootRegionId</td>
+<td>获取特定一级区域下的所有二级区域</td>
+</tr>
+<tr>
+<td>getDeviceList</td>
+<td>regionId</td>
+<td>获取特定区域下的设备列表</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>
+<p>区域相关的所有请求，不分页，也就是 getRootRegions 会响应所有一级区域的信息，getRegionChildren 会响应所有特定区域下的子区域，不管响应结果会有多少个</p>
+</li>
+<li>
+<p>进入页面时，会完整请求所有区域，以及所有区域下的设备信息</p>
+</li>
+<li>
+<p>区域提供搜索功能，搜索由前端实现，所以要完整加载所有区域信息后才能实现搜索</p>
+</li>
+</ul>
+<p><code>请求数量 = 1（getRootRegions） + 总一级区域数量（getRegionChildren） + 总区域数量（getDeviceList）</code></p>
+<p>这样一来，一进入页面，就会发送多个请求，请求数量随区域数量的增加而线性增加，导致在区域数量很多时，并行发送了大量请求给后端</p>
+<p>从该客户的配置情况来看，前端会发送<code>1+500+(500+2000)=3001</code>个请求，并行发大量请求带来的影响有：</p>
+<ul>
+<li>
+<p>浏览器一般会限制并行请求数量，前面的请求未得到响应时，后发的请求暂时阻塞，导致大量请求被阻塞，响应时间长，响应可能出现超时导致服务不可用</p>
+</li>
+<li>
+<p>并行请求数量太多，服务器资源占用突增，后端服务器响应时间变长</p>
+</li>
+</ul>
+<h2 id="优化方案">优化方案</h2>
+<p>该问题虽然可以认为是性能问题（配置少的情况下不会出现、配置多的情况下出现），但是从直接原因来看，是前后端设计实现不合理导致的，因此针对此页面提出如下几个改进方案：</p>
+<ul>
+<li>
+<p>所有获取区域功能，添加分页接口，一次获取有限数量的信息，直到页面滚动或者用户手动点击加载更多才按需加载更多区域</p>
+</li>
+<li>
+<p>所有需要搜索区域的功能，添加搜索接口，搜索由后端实现</p>
+</li>
+<li>
+<p>所有请求设备的接口，只请求当前选中区域的设备、未选中区域的设备不请求</p>
+</li>
+</ul>
+<p>如此一来，就能大大减少页面发送的请求数量，而对用户体验基本又不会有影响，后续采用此方案优化效果明显</p>
+<h3 id="引入的其他问题">引入的其他问题</h3>
+<p>实际改动提测后，发现涉及到区域勾选+搜索的页面（设置角色权限时，可以批量勾选其拥有权限的区域），会遇到问题。</p>
+<ul>
+<li>
+<p>因为当前是分页加载的，前端在加载完成之前并不知道有多少区域</p>
+</li>
+<li>
+<p>如果勾选了父区域，子区域也被选中，前端传参直接是父区域ID</p>
+</li>
+<li>
+<p>考虑如下场景：此时如果取消勾选某个子区域，父区域会变成半选状态，但是如果子区域过多、一页没有加载完，直接确认，前端传参就会变成这一页的所有勾选的子区域ID，剩下没加载的子区域因为前端不知道具体信息，所以不会传给后端，导致实际结果与预期不符</p>
+</li>
+<li>
+<p>进一步的，涉及勾选后再搜索、搜索后再清除某些已搜索的内容，都会因为前端没有获取过完整的树结构，导致一些不符合预期的结果（讨论过搜索清空已选的方案，认为与实际用户习惯不符，不能接受）</p>
+</li>
+</ul>
+<p>这个问题相对比较棘手，讨论了很久都没有好的解决方案，于是去看了看竞品有没有类似的页面（树组织结构+父子层级+多选）</p>
+<h3 id="解决方案">解决方案</h3>
+<p>海康云眸社区：<a href="https://www.hik-cloud.com/neptune/index.html">https://www.hik-cloud.com/neptune/index.html</a></p>
+<p>有相似功能的有两个页面，其实现还不一样：</p>
+<ul>
+<li>
+<p>父子组织树结构+搜索功能</p>
+<ul>
+<li>
+<p>分页获取</p>
+</li>
+<li>
+<p>搜索后端完成</p>
+</li>
+</ul>
+</li>
+<li>
+<p>父子组织树结构+勾选功能+搜索功能</p>
+<ul>
+<li>
+<p>不分页直接获取完整组织树</p>
+</li>
+<li>
+<p>搜索前端完成</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>参考这个实现，又想到是不是可以不分页、前端获取完整组织树、搜索前端完成</p>
+<p>之前出现性能问题的场景是，有多个根区域、每个根区域又有子区域，这时候获取完根区域之后再去遍历获取每个根区域的子区域，导致并行发送的请求数量很多</p>
+<p>可以考虑新增一个获取完整区域树结构的接口：</p>
+<ul>
+<li>
+<p>输入 projectId，输出所有区域信息</p>
+</li>
+<li>
+<p>输出区域信息不包含层级关系，通过 regionBranch（regionId 完整路径） 来标示父子接哦故</p>
+</li>
+<li>
+<p>前端用区域信息来构造完整的区域树（一个请求搞定）</p>
+</li>
+<li>
+<p>搜索功能仍然有前端来完成，保留勾选状态</p>
+</li>
+<li>
+<p>父子组织树结构+勾选功能+搜索功能的页面使用频次很少，低频次的完整组织树获取也不会对服务有太大影响</p>
+</li>
+<li>
+<p>从竞品情况来看，3000+个区域，单个接口的响应大小在200K左右（其regionId为40位string，相对较长），单个接口的响应时间在100ms左右，都可以接受</p>
+</li>
+<li>
+<p>后端接口性能上，响应的都是数据库已有字段，projectId 已加索引，性能风险不大 <code>SELECT regionId, regionName, regionBranch, order form region_info where projectId='xxx';</code></p>
+</li>
+<li>
+<p>需要再评估一下前端性能</p>
+</li>
+</ul>
+<pre><code class="language-Plain">POST /tums/resources/getRegionTree
+Request:
+{
+    &quot;projectId&quot;: &quot;123&quot;
+}
+Response:
+{
+    &quot;result&quot;: [
+        {
+            &quot;regionId&quot;：&quot;1&quot;,
+            &quot;regionName&quot;: &quot;一&quot;,
+            &quot;regionBranch&quot;: &quot;1-&quot;，
+            &quot;order&quot;: 1
+        },
+        {
+            &quot;regionId&quot;: &quot;2&quot;,
+            &quot;regionName&quot;: &quot;二&quot;,
+            &quot;regionBranch&quot;: &quot;1-2-&quot;,
+            &quot;order&quot;: 1
+        }
+    ],
+    &quot;error_code&quot;: 0
+}
+</code></pre>
+<h2 id="总结与反思">总结与反思</h2>
+<ul>
+<li>
+<p>遇到性能问题，先从设计实现的角度去看看，有没有实现不合理的地方，再去着手考虑优化</p>
+</li>
+<li>
+<p>前端资源按需加载，一次加载不必要的资源，不仅加大了服务压力，还导致响应时间延长影响用户体验</p>
+</li>
+<li>
+<p>一个问题有解决方案后，不一定对所有业务功能都通用，要灵活考虑</p>
+</li>
+</ul>
+
+                </div>
+            </article>
+        </div>
+
+        
+            <div class="next-post">
+                <div class="next gt-c-content-color-first">下一篇</div>
+                <a href="https://hill-jiang.github.io/post/jmeter-shi-xian-bing-xing-fa-song-xi-dai-lie-biao-can-shu-zhong-mou-yi-xiang-de-qing-qiu/" class="post-title gt-a-link">
+                    JMeter实现并行发送携带列表参数中某一项的请求
+                </a>
+            </div>
+        
+
+        
+
+        
+
+        
+
+        <div class="site-footer gt-c-content-color-first">
+    <div class="slogan gt-c-content-color-first">惟学无际</div>
+    <div class="social-container">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    </div>
+    <div class="footer-info">
+        Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+    </div>
+    <div>
+        Theme by <a href="https://imhanjie.com/" target="_blank">imhanjie</a>, Powered by <a
+                href="https://github.com/getgridea/gridea" target="_blank">Gridea | <a href="https://hill-jiang.github.io/atom.xml" target="_blank">RSS</a></a>
+    </div>
+</div>
+
+<script>
+  hljs.initHighlightingOnLoad()
+</script>
+
+    </div>
+</div>
+</body>
+</html>

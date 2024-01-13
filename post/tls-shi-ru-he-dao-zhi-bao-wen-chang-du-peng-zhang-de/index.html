@@ -1,0 +1,277 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<meta name="description" content=""/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>TLS 是如何导致报文长度膨胀的 | Hill&#39;s Blog</title>
+
+<link rel="shortcut icon" href="https://hill-jiang.github.io/favicon.ico?v=1705114048924">
+
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hill-jiang.github.io/styles/main.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dockerfile.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dart.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.27.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+<!-- DEMO JS -->
+<!--<script src="media/scripts/index.js"></script>-->
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.css">
+</head>
+<body>
+<div class="main gt-bg-theme-color-first">
+    <nav class="navbar navbar-expand-lg">
+    <div class="navbar-brand">
+        <img class="user-avatar" src="/images/avatar.png" alt="头像">
+        <div class="site-name gt-c-content-color-first">
+            Hill&#39;s Blog
+        </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-bars gt-c-content-color-first" style="font-size: 18px"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="navbar-nav mr-auto" style="text-align: center">
+            
+                <div class="nav-item">
+                    
+                        <a href="/" class="menu gt-a-link">
+                            首页
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/archives" class="menu gt-a-link">
+                            归档
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/tags" class="menu gt-a-link">
+                            标签
+                        </a>
+                    
+                </div>
+            
+        </div>
+        <div style="text-align: center">
+            <form id="gridea-search-form" style="position: relative" data-update="1705114048924" action="/search/index.html">
+                <input class="search-input" autocomplete="off" spellcheck="false" name="q" placeholder="搜索文章" />
+                <i class="fas fa-search gt-c-content-color-first" style="position: absolute; top: 9px; left: 10px;"></i>
+            </form>
+        </div>
+    </div>
+</nav>
+
+    <div class="post-container">
+        <div class="post-detail gt-bg-theme-color-second">
+            <article class="gt-post-content">
+                <h2 class="post-title">
+                    TLS 是如何导致报文长度膨胀的
+                </h2>
+                <div class="post-info">
+                    <time class="post-time gt-c-content-color-first">
+                        · 2023-10-15 ·
+                    </time>
+                    
+                        <a href="https://hill-jiang.github.io/tag/PNIwzxfLqw/" class="post-tags">
+                            # 网络
+                        </a>
+                    
+                </div>
+                <div class="post-content">
+                    <h2 id="问题背景">问题背景</h2>
+<p>最近 4G 充电桩的项目遇到一个问题，实测设备每天消耗的 4G 流量，远远超出理论计算的值</p>
+<p>能够理解 TCP 头部、IP 头部、以太网头部等网络协议头导致报文长度增长，但从实际抓包情况来看，去掉这些网络协议头后的报文长度，也远超出原始明文长度：</p>
+<ol>
+<li>设备端发送明文的心跳报文长度应该是 34 字节，为什么加密后实际发了 64+96 字节？云端的心跳报文回复长度应该是 28 字节，为什么加密后实际收到了 80 字节？</li>
+<li>为什么设备与云端交互时，总会发送两个报文，第一个报文的长度始终为 64 字节？</li>
+</ol>
+<figure data-type="image" tabindex="1"><img src="https://hill-jiang.github.io/post-images/1697334170660.png" alt="" loading="lazy"></figure>
+<p>为了搞清楚原因，决定从 TLS 协议入手进行分析</p>
+<h2 id="tls-协议">TLS 协议</h2>
+<p>SSL/TLS 是一种密码通信框架，他是世界上使用最广泛的密码通信方法。SSL/TLS 综合运用了密码学中的对称密码，消息认证码，公钥密码，数字签名，伪随机数生成器等，可以说是密码学中的集大成者</p>
+<p>SSL(Secure Socket Layer)安全套接层，是 1994 年由 Netscape 公司设计的一套协议，并与 1995 年发布了 3.0 版本</p>
+<p>TLS(Transport Layer Security)传输层安全是 IETF 在 SSL3.0 基础上设计的协议，实际上相当于 SSL 的后续版本</p>
+<p>TLS 协议主要分为两层，底层是 TLS 记录协议，负责使用对称密码对消息进行加密</p>
+<p>上层是 TLS 握手协议，负责在客户端和服务端商定密码算法和共享密钥</p>
+<h3 id="tls-握手协议">TLS 握手协议</h3>
+<figure data-type="image" tabindex="2"><img src="https://hill-jiang.github.io/post-images/1697334186017.png" alt="" loading="lazy"></figure>
+<figure data-type="image" tabindex="3"><img src="https://hill-jiang.github.io/post-images/1697334193433.png" alt="" loading="lazy"></figure>
+<p>从抓包来看，我们的设备和基础云进行 TLS 握手时，经历了以下阶段：</p>
+<ol>
+<li>
+<p>Client Hello，客户端向服务器端发送一个 client hello 的消息，包含下面内容：<br>
+<img src="https://hill-jiang.github.io/post-images/1697334204213.png" alt="" loading="lazy"></p>
+<p>可用版本号、当前时间、客户端随机数、会话 ID、可用的密码套件清单、可用的压缩方式清单</p>
+</li>
+<li>
+<p>Server Hello，服务器端收到 client hello 消息后，会向客户端返回一个 server hello 消息，包含如下内容：<br>
+<img src="https://hill-jiang.github.io/post-images/1697334214081.png" alt="" loading="lazy"><br>
+使用的版本号、当前时间、服务器随机数、会话 ID、使用的密码套件、使用的压缩方式<br>
+可以看到，我们的设备和基础云协商的加密方式为 <code>TLS_RSA_WITH_AES_128_CBC_SHA256</code>，压缩方式无</p>
+</li>
+<li>
+<p>Certificate，服务端发送自己的证书清单，因为证书可能是层级结构的，所以除了服务器自己的证书之外，还需要发送为服务器签名的证书<br>
+<img src="https://hill-jiang.github.io/post-images/1697334228430.png" alt="" loading="lazy"></p>
+</li>
+<li>
+<p>Server Hello Done，服务器端发送 server hello done 的消息告诉客户端自己的消息结束了<br>
+![image-20220820163300335](TLS 是如何导致报文长度膨胀的.assets/image-20220820163300335.png)</p>
+</li>
+<li>
+<p>Client Key Exchange，公钥或者 RSA 模式情况下，客户端将根据客户端生成的随机数和服务器端生成的随机数，生成预备主密码，通过该公钥进行加密，返送给服务器端<br>
+<img src="https://hill-jiang.github.io/post-images/1697334237964.png" alt="" loading="lazy"></p>
+</li>
+<li>
+<p>Client Change Cipher Spec、Finish，客户端准备切换密码，表示后面的消息将会以前面协商过的密钥进行加密<br>
+<img src="https://hill-jiang.github.io/post-images/1697334246444.png" alt="" loading="lazy"></p>
+</li>
+<li>
+<p>Server Change Cipher Spec、Finish，服务端准备切换密码，表示后面的消息将会以前面协商过的密钥进行加密<br>
+<img src="https://hill-jiang.github.io/post-images/1697334256791.png" alt="" loading="lazy"></p>
+</li>
+</ol>
+<h3 id="tls-记录协议">TLS 记录协议</h3>
+<figure data-type="image" tabindex="4"><img src="https://hill-jiang.github.io/post-images/1697334262857.png" alt="" loading="lazy"></figure>
+<p>TLS 记录协议主要负责消息的压缩，加密及数据的认证</p>
+<p>首先，消息被分割成多个较短的片段，然后分别对每个片段进行压缩，压缩算法需要与通信对象协商决定</p>
+<p>接下来，经过压缩的片段会被加上消息认证码，这是为了保证完整性，并进行数据的认证。通过附加消息认证码的 MAC 值，可以识别出篡改。与此同时，为了防止重放攻击，在计算消息认证码时，还加上了片段的编码。单项散列的函数的算法，以及消息认证码所使用的共享密钥都需要与通信对象协商决定</p>
+<p>再接下来，经过压缩的片段再加上消息认证码会一起通过对称加密进行加密。加密使用 CBC 模式，CBC 模式的初始向量 IV 通过主密码生成，而对称密码的算法以及共享密码需要与通信对象协商决定</p>
+<figure data-type="image" tabindex="5"><img src="https://hill-jiang.github.io/post-images/1697334273781.png" alt="" loading="lazy"></figure>
+<h2 id="分析">分析</h2>
+<p>从握手阶段的 ServerHello 报文，我们知道了此次通信无压缩、使用的加密方式为 <code>TLS_RSA_WITH_AES_128_CBC_SHA256</code></p>
+<p>这个加密方式实际上分为了好几个部分：</p>
+<ul>
+<li>RSA 表示使用 RSA 非对称加密来传输 AES 密钥</li>
+<li>AES_128_CBC 表示应用数据使用 AES_128_CBC 模式来加密</li>
+<li>SHA256 表示生成 MAC 的摘要算法使用 SHA256</li>
+</ul>
+<h3 id="rsa">RSA</h3>
+<p>个没啥好分析的，握手阶段就已经通过 RSA 进行了 AES 密钥传输</p>
+<h3 id="aes_128_cbc">AES_128_CBC</h3>
+<p>AES_128_CBC 是一种分组对称加密算法，即用同一组 key 进行明文和密文的转换，key 的长度为 128bit：</p>
+<ul>
+<li>
+<p>以 128bit 为一组，128bit=16Byte，意思就是明文的 16 字节为一组，对应加密后的 16 字节的密文</p>
+</li>
+<li>
+<p>若最后剩余的明文不够 16 字节，需要进行填充，通常采用 PKCS7 进行填充。比如最后缺 3 个字节，则填充 3 个字节的 0x03；若最后缺 10 个字节，则填充 10 个字节的 0x0a</p>
+</li>
+<li>
+<p>若明文正好是 16 个字节的整数倍，最后要再加入一个 16 字节 0x10 的组再进行加密</p>
+</li>
+<li>
+<p>CBC 模式为：用初始向量和密钥加密第一组数据，然后把第一组数据加密后的密文重新赋值给 IV，然后进行第二组加密，循环进行直到结束</p>
+</li>
+</ul>
+<p>那么通过 AES_128_CBC 加密原始明文，得到的最终长度一定是 16 字节的整数倍，会导致 1-16 字节的膨胀（密文长度比明文长度大 1-16 字节）</p>
+<h3 id="sha256">SHA256</h3>
+<p>对于任意长度的消息，SHA256 都会产生一个 256 位的哈希值，也就是 32 个字节。</p>
+<p>在 TLS 记录协议中，对压缩后的消息片段进行 MAC 值的计算用的散列函数就是 SHA256，详细的 MAC 值计算方法不展开了，反正最终 MAC 长度是 32 字节。</p>
+<h3 id="加密数据长度">加密数据长度</h3>
+<p>回到 TLS 记录协议上，TLS 1.2 记录协议中，报文经过 ASE_CBC 块加密后的完整组成结构如下：</p>
+<pre><code>struct {
+    opaque IV[SecurityParameters.record_iv_length];
+    block-ciphered struct {
+        opaque content[TLSCompressed.length];
+        opaque MAC[SecurityParameters.mac_length];
+        uint8 padding[GenericBlockCipher.padding_length];
+        uint8 padding_length;
+    };
+} GenericBlockCipher
+</code></pre>
+<p>总长度 = 向量 IV 长度 + 明文压缩后的长度 + MAC 长度 + 填充长度</p>
+<ul>
+<li>IV 是指 AES_CBC 加密是使用的初始向量，其长度为块加密的 block_size，在 AES 加密中为 16 字节</li>
+<li>无压缩，压缩后长度为原始明文长度</li>
+<li>MAC 长度为 32 字节</li>
+<li>填充长度为 1-16 字节</li>
+</ul>
+<p>再来看看设备发的心跳报文，原始明文为 34 字节，拆成了 64 字节和 96 字节两个包发送，猜测是这样的：</p>
+<ul>
+<li>第一个包：length = 0（plainText） + 16（IV） + 32（MAC） + 16（padding） = 64</li>
+<li>第二个包：length = 34（plainText） + 16（IV） + 32（MAC） + 14（padding） = 96</li>
+</ul>
+<p>至于为什么设备端总会发送数据之前发送一个内容为空的包，就涉及到具体设备端实现了，参考资料中有提到 <code>发送 fragment 长度为 0 的应用数据在进行流量分析时是有用的</code></p>
+<p>云端回复的报文，原始明文为 28 字节，实际加密后为 80 字节：</p>
+<p>length = 28（plainText） + 16（IV） + 32（MAC） + 4（padding） = 80</p>
+<p>至此，TLS 加密导致报文长度膨胀的原因基本弄清楚了</p>
+<h2 id="总结">总结</h2>
+<p>设备和云端使用 TLS 加密协议进行通信，协商的通信方法是 <code>TLS_RSA_WITH_AES_128_CBC_SHA256</code>，因为块加密填充、计算消息认证码等原因导致加密后的消息长度原大于原始明文长度</p>
+<p>设备在发送消息时，总会把先发送一个原始明文长度为 0 的消息，与设备端实现有关</p>
+<p>具体到 4G 充电桩这个项目上，产品让步不再进行流量限制，后续如果有对使用流量极为敏感的设备，可从加密角度着手，优化通信方式和加密协议，减少 TLS 加密带来的报文长度膨胀</p>
+<h2 id="参考">参考</h2>
+<blockquote>
+<p><a href="https://zhuanlan.zhihu.com/p/133375078">一篇文章让你彻底弄懂 SSL/TLS 协议 - 知乎 (zhihu.com)</a></p>
+<p><a href="https://www.jianshu.com/p/aa3b7398eac9">对加密算法 AES-128-CBC 的一些理解 - 简书 (jianshu.com)</a></p>
+<p>https://halfrost.com/https_record_layer/</p>
+</blockquote>
+
+                </div>
+            </article>
+        </div>
+
+        
+            <div class="next-post">
+                <div class="next gt-c-content-color-first">下一篇</div>
+                <a href="https://hill-jiang.github.io/post/rtmpflv-fu-wu-da-jian-yu-ji-yu-python-de-flv-liu-huo-qu/" class="post-title gt-a-link">
+                    rtmp+flv服务搭建与基于python的flv流获取
+                </a>
+            </div>
+        
+
+        
+
+        
+
+        
+
+        <div class="site-footer gt-c-content-color-first">
+    <div class="slogan gt-c-content-color-first">惟学无际</div>
+    <div class="social-container">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    </div>
+    <div class="footer-info">
+        Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+    </div>
+    <div>
+        Theme by <a href="https://imhanjie.com/" target="_blank">imhanjie</a>, Powered by <a
+                href="https://github.com/getgridea/gridea" target="_blank">Gridea | <a href="https://hill-jiang.github.io/atom.xml" target="_blank">RSS</a></a>
+    </div>
+</div>
+
+<script>
+  hljs.initHighlightingOnLoad()
+</script>
+
+    </div>
+</div>
+</body>
+</html>

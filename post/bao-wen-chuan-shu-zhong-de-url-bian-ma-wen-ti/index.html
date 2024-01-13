@@ -1,0 +1,398 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<meta name="description" content=""/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>报文传输中的 url 编码问题 | Hill&#39;s Blog</title>
+
+<link rel="shortcut icon" href="https://hill-jiang.github.io/favicon.ico?v=1705114048924">
+
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hill-jiang.github.io/styles/main.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dockerfile.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dart.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.27.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+<!-- DEMO JS -->
+<!--<script src="media/scripts/index.js"></script>-->
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.css">
+</head>
+<body>
+<div class="main gt-bg-theme-color-first">
+    <nav class="navbar navbar-expand-lg">
+    <div class="navbar-brand">
+        <img class="user-avatar" src="/images/avatar.png" alt="头像">
+        <div class="site-name gt-c-content-color-first">
+            Hill&#39;s Blog
+        </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-bars gt-c-content-color-first" style="font-size: 18px"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="navbar-nav mr-auto" style="text-align: center">
+            
+                <div class="nav-item">
+                    
+                        <a href="/" class="menu gt-a-link">
+                            首页
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/archives" class="menu gt-a-link">
+                            归档
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/tags" class="menu gt-a-link">
+                            标签
+                        </a>
+                    
+                </div>
+            
+        </div>
+        <div style="text-align: center">
+            <form id="gridea-search-form" style="position: relative" data-update="1705114048924" action="/search/index.html">
+                <input class="search-input" autocomplete="off" spellcheck="false" name="q" placeholder="搜索文章" />
+                <i class="fas fa-search gt-c-content-color-first" style="position: absolute; top: 9px; left: 10px;"></i>
+            </form>
+        </div>
+    </div>
+</nav>
+
+    <div class="post-container">
+        <div class="post-detail gt-bg-theme-color-second">
+            <article class="gt-post-content">
+                <h2 class="post-title">
+                    报文传输中的 url 编码问题
+                </h2>
+                <div class="post-info">
+                    <time class="post-time gt-c-content-color-first">
+                        · 2023-10-15 ·
+                    </time>
+                    
+                        <a href="https://hill-jiang.github.io/tag/PNIwzxfLqw/" class="post-tags">
+                            # 网络
+                        </a>
+                    
+                </div>
+                <div class="post-content">
+                    <h2 id="url-编码">url 编码</h2>
+<ul>
+<li>当 url 路径，或者查询参数中带有中文、特殊字符的时候，就需要对 url 进行编码（采用十六进制编码格式）。url 编码的原则是使用安全字符（即没有特殊用途或者特殊意义的字符）去表示那些不安全的字符。</li>
+<li>对于特殊字符来说，url 编码就是一个字符 ascii 码的十六进制。（ASCII 码使用 8 位二进制数的组合来表示不同的字符，也就是一个字节的大小。其中常规的 ASCII 码，最高位是 0，所以总共可以表示 128 个字符。） 不过稍微有些变动，需要在前面加上 <code>%</code>。 比如 <code>\</code>，它的 ascii 码是 92，92 的十六进制是 5c，所以 <code>\</code> 的 url 编码就是%5c。</li>
+<li>对于中文来说，url 编码是将其转换为 Unicode 码，再转化为十六进制的 UTF-8 编码，最后加上%。</li>
+<li>url 编码使用后跟十六进制数字的 &quot;%&quot; 替代不安全的 ASCII 字符。</li>
+<li>url 不能包含空格。url 编码通常使用加号（+）或 %20 替代空格。</li>
+</ul>
+<p>RFC3986 文档规定，url 中只允许包含以下四种：</p>
+<ol>
+<li>英文字母（a-zA-Z）</li>
+<li>数字（0-9）</li>
+<li><code>-_.~</code> 4 个特殊字符</li>
+<li>所有保留字符，RFC3986 中指定了以下字符为保留字符（英文字符）： <code> ! * ' ( ) ; : @ &amp; = + $, / ? # [ ]</code></li>
+</ol>
+<p>所谓保留字符，就是在 url 中具有特定意义的字符。</p>
+<p>常见 url 编码转换表</p>
+<table>
+<thead>
+<tr>
+<th>编码前</th>
+<th>编码后</th>
+<th>编码前</th>
+<th>编码后</th>
+<th>编码前</th>
+<th>编码后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>space</td>
+<td>%20</td>
+<td>*</td>
+<td>%2A</td>
+<td>&gt;</td>
+<td>%3E</td>
+</tr>
+<tr>
+<td>!</td>
+<td>%21</td>
+<td>+</td>
+<td>%2B</td>
+<td>?</td>
+<td>%3F</td>
+</tr>
+<tr>
+<td>&quot;</td>
+<td>%22</td>
+<td>,</td>
+<td>%2C</td>
+<td>@</td>
+<td>%40</td>
+</tr>
+<tr>
+<td>#</td>
+<td>%23</td>
+<td>-</td>
+<td>%2D</td>
+<td>[</td>
+<td>%5B</td>
+</tr>
+<tr>
+<td>$</td>
+<td>%24</td>
+<td>.</td>
+<td>%2E</td>
+<td>\</td>
+<td>%5C</td>
+</tr>
+<tr>
+<td>%</td>
+<td>%25</td>
+<td>/</td>
+<td>%2F</td>
+<td>]</td>
+<td>%5D</td>
+</tr>
+<tr>
+<td>&amp;</td>
+<td>%26</td>
+<td>:</td>
+<td>%3A</td>
+<td>^</td>
+<td>%5E</td>
+</tr>
+<tr>
+<td>'</td>
+<td>%27</td>
+<td>;</td>
+<td>%3B</td>
+<td>_</td>
+<td>%5F</td>
+</tr>
+<tr>
+<td>(</td>
+<td>%28</td>
+<td>&lt;</td>
+<td>%3C</td>
+<td>`</td>
+<td>%60</td>
+</tr>
+<tr>
+<td>)</td>
+<td>%29</td>
+<td>=</td>
+<td>%3D</td>
+<td>{</td>
+<td>%7B</td>
+</tr>
+<tr>
+<td>|</td>
+<td>%7C</td>
+<td>}</td>
+<td>%7D</td>
+<td>~</td>
+<td>%7E</td>
+</tr>
+</tbody>
+</table>
+<h2 id="测试需要注意的点">测试需要注意的点</h2>
+<p>集中存储、监控点上墙等场景，传输的是 url 地址，需要重点关注用户名/密码包含所有保留字符的表现，因为后端在处理 url、从中提取用户名、密码、IP 等信息时，可能会遇到保留字符。</p>
+<p>设置设备名称等场景，原则上用户输入可以是任意字符，在HTTP传输过程中，为了确保数据的正确性和可靠性，通常需要对payload进行URL编码处理，这也就导致了所有需要进行HTTP传输的场景，客户端需要将原始用户输入进行URL编码传输、而将从服务端收到的数据进行URL解码显示，其中一个环节出现问题就可能导致传输或显示异常。<br>
+此时需要关注所有 url 编解码相关的字符。</p>
+<p>可能存在风险的字符：</p>
+<ul>
+<li>空格</li>
+<li>所有保留字符</li>
+<li><code>%</code> 本身</li>
+<li>编码后的字符，比如 <code>%20、%21</code> 等</li>
+</ul>
+<hr>
+<h2 id="各编程语言的url编解码方式">各编程语言的url编解码方式</h2>
+<p>Python：</p>
+<ul>
+<li><code>urllib.parse.quote</code>和<code>urllib.parse.unquote</code>：这是Python标准库中提供的url编解码函数，可以将字符进行url编码或解码。</li>
+</ul>
+<pre><code>lang=Python
+
+import urllib.parse
+
+# url编码
+url = 'https://www.example.com/search?q=Python 编程'
+encoded_url = urllib.parse.quote(url)
+print(encoded_url)  # https%3A//www.example.com/search%3Fq%3DPython%20%E7%BC%96%E7%A8%8B
+
+# url解码
+decoded_url = urllib.parse.unquote(encoded_url)
+print(decoded_url)  # https://www.example.com/search?q=Python 编程
+</code></pre>
+<ul>
+<li><code>requests.utils.quote</code>和<code>requests.utils.unquote</code>：这是requests库中提供的url编解码函数，与<code>urllib.parse</code>类似。</li>
+</ul>
+<pre><code>lang=Python
+
+import requests.utils
+
+# url编码
+url = 'https://www.example.com/search?q=Python 编程'
+encoded_url = requests.utils.quote(url)
+print(encoded_url)  # https%3A//www.example.com/search%3Fq%3DPython%20%E7%BC%96%E7%A8%8B
+
+# url解码
+decoded_url = requests.utils.unquote(encoded_url)
+print(decoded_url)  # https://www.example.com/search?q=Python 编程
+</code></pre>
+<p>Java：</p>
+<ul>
+<li><code>java.net.URLEncoder</code>和<code>java.net.URLDecoder</code>：这是Java标准库中提供的URL编解码类，可以将字符串进行URL编码或解码</li>
+</ul>
+<pre><code>lang=Java
+
+import java.net.URLEncoder;
+import java.net.URLDecoder;
+
+// URL编码
+String url = &quot;https://www.example.com/search?q=Java 编程&quot;;
+String encodedUrl = URLEncoder.encode(url, &quot;UTF-8&quot;);
+System.out.println(encodedUrl);  // https%3A%2F%2Fwww.example.com%2Fsearch%3Fq%3DJava+%E7%BC%96%E7%A8%8B
+
+// URL解码
+String decodedUrl = URLDecoder.decode(encodedUrl, &quot;UTF-8&quot;);
+System.out.println(decodedUrl);  // https://www.example.com/search?q=Java 编程
+</code></pre>
+<ul>
+<li><code>org.apache.commons.codec.net.URLCodec</code>：这是Apache Commons Codec库中提供的URL编解码类，与<code>java.net.URLEncoder</code>和<code>java.net.URLDecoder</code>类似</li>
+</ul>
+<pre><code>lang=Java
+
+import org.apache.commons.codec.net.URLCodec;
+
+// URL编码
+String url = &quot;https://www.example.com/search?q=Java 编程&quot;;
+String encodedUrl = new URLCodec().encode(url);
+System.out.println(encodedUrl);  // https%3A%2F%2Fwww.example.com%2Fsearch%3Fq%3DJava+%E7%BC%96%E7%A8%8B
+
+// URL解码
+String decodedUrl = new URLCodec().decode(encodedUrl);
+System.out.println(decodedUrl);  // https://www.example.com/search?q=Java 编程
+</code></pre>
+<p>C：</p>
+<p>C语言中没有标准库提供URL编解码函数，一般手动实现。</p>
+<pre><code>lang=C
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;ctype.h&gt;
+
+// URL编码函数
+char *urlencode(const char *str) {
+    const char *hex = &quot;0123456789ABCDEF&quot;;
+    size_t len = strlen(str);
+    char *buf = malloc(len * 3 + 1), *pbuf = buf;
+    for (size_t i = 0; i &lt; len; i++) {
+        if (isalnum(str[i]) || strchr(&quot;-_.~&quot;, str[i])) {
+            *(pbuf++) = str[i];
+        } else if (str[i] == ' ') {
+            *(pbuf++) = '+';
+        } else {
+            *(pbuf++) = '%';
+            *(pbuf++) = hex[(unsigned char) str[i] &gt;&gt; 4];
+            *(pbuf++) = hex[(unsigned char) str[i] &amp; 15];
+        }
+    }
+    *pbuf = '\0';
+    return buf;
+}
+
+// URL解码函数
+char *urldecode(const char *str) {
+    size_t len = strlen(str);
+    char *buf = malloc(len + 1), *pbuf = buf;
+    for (size_t i = 0; i &lt; len; i++) {
+        if (str[i] == '+') {
+            *(pbuf++) = ' ';
+        } else if (str[i] == '%' &amp;&amp; isxdigit(str[i + 1]) &amp;&amp; isxdigit(str[i + 2])) {
+            int ch;
+            sscanf(&amp;str[i + 1], &quot;%02x&quot;, &amp;ch);
+            *(pbuf++) = ch;
+            i += 2;
+        } else {
+            *(pbuf++) = str[i];
+        }
+    }
+    *pbuf = '\0';
+    return buf;
+}
+</code></pre>
+
+                </div>
+            </article>
+        </div>
+
+        
+            <div class="next-post">
+                <div class="next gt-c-content-color-first">下一篇</div>
+                <a href="https://hill-jiang.github.io/post/tls-shi-ru-he-dao-zhi-bao-wen-chang-du-peng-zhang-de/" class="post-title gt-a-link">
+                    TLS 是如何导致报文长度膨胀的
+                </a>
+            </div>
+        
+
+        
+
+        
+
+        
+
+        <div class="site-footer gt-c-content-color-first">
+    <div class="slogan gt-c-content-color-first">惟学无际</div>
+    <div class="social-container">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    </div>
+    <div class="footer-info">
+        Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+    </div>
+    <div>
+        Theme by <a href="https://imhanjie.com/" target="_blank">imhanjie</a>, Powered by <a
+                href="https://github.com/getgridea/gridea" target="_blank">Gridea | <a href="https://hill-jiang.github.io/atom.xml" target="_blank">RSS</a></a>
+    </div>
+</div>
+
+<script>
+  hljs.initHighlightingOnLoad()
+</script>
+
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,329 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<meta name="description" content=""/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>线程池参数设置不合理导致的消息丢失问题 | Hill&#39;s Blog</title>
+
+<link rel="shortcut icon" href="https://hill-jiang.github.io/favicon.ico?v=1705114048924">
+
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hill-jiang.github.io/styles/main.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dockerfile.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dart.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.27.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+<!-- DEMO JS -->
+<!--<script src="media/scripts/index.js"></script>-->
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.css">
+</head>
+<body>
+<div class="main gt-bg-theme-color-first">
+    <nav class="navbar navbar-expand-lg">
+    <div class="navbar-brand">
+        <img class="user-avatar" src="/images/avatar.png" alt="头像">
+        <div class="site-name gt-c-content-color-first">
+            Hill&#39;s Blog
+        </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-bars gt-c-content-color-first" style="font-size: 18px"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="navbar-nav mr-auto" style="text-align: center">
+            
+                <div class="nav-item">
+                    
+                        <a href="/" class="menu gt-a-link">
+                            首页
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/archives" class="menu gt-a-link">
+                            归档
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/tags" class="menu gt-a-link">
+                            标签
+                        </a>
+                    
+                </div>
+            
+        </div>
+        <div style="text-align: center">
+            <form id="gridea-search-form" style="position: relative" data-update="1705114048924" action="/search/index.html">
+                <input class="search-input" autocomplete="off" spellcheck="false" name="q" placeholder="搜索文章" />
+                <i class="fas fa-search gt-c-content-color-first" style="position: absolute; top: 9px; left: 10px;"></i>
+            </form>
+        </div>
+    </div>
+</nav>
+
+    <div class="post-container">
+        <div class="post-detail gt-bg-theme-color-second">
+            <article class="gt-post-content">
+                <h2 class="post-title">
+                    线程池参数设置不合理导致的消息丢失问题
+                </h2>
+                <div class="post-info">
+                    <time class="post-time gt-c-content-color-first">
+                        · 2023-10-15 ·
+                    </time>
+                    
+                        <a href="https://hill-jiang.github.io/tag/EaPdL6sj4/" class="post-tags">
+                            # Java
+                        </a>
+                    
+                </div>
+                <div class="post-content">
+                    <h2 id="问题背景">问题背景</h2>
+<ul>
+<li>充电桩使用4G流量卡上网，在4G信号不稳定的情况下，可能出现设备离线</li>
+<li>生产环境中，偶现充电桩掉线后，始终没有在云平台重新上线，导致用户扫码提示设备故障无法使用</li>
+<li>而实际设备已经在线，在云平台 WEB 上手动同步设备信息后，设备恢复在线状态，可以正常使用</li>
+</ul>
+<h2 id="业务流程">业务流程</h2>
+<p>以设备上线为例，设备首先和云平台的设备连接层建立socket连接交互，连接层模块会产生一个上线事件，发到kafka的topic上，下游模块消费后，经过业务处理，转发给云平台的设备管理模块，设备管理模块收到消息后修改对应的设备在线状态、触发消息提醒。</p>
+<pre><code class="language-sequence">participant 设备 as d
+participant 设备连接层 as c
+participant kafka as k
+participant 下游模块 as h
+participant 云平台 as b
+
+d-&gt;c: 建立连接
+note over d, c: 长连接
+c-&gt;k: 设备上线事件
+k-&gt;h: 消费消息
+note over h: 业务处理
+h-&gt;b: 消息转发
+note over b: 产生消息提示
+note over b: 修改设备在线状态
+</code></pre>
+<figure data-type="image" tabindex="1"><img src="https://hill-jiang.github.io/post-images/1697335133892.png" alt="" loading="lazy"></figure>
+<p>根据日志，初步定位问题原因是云平台未收到设备上线的消息，导致无法正确修改设备在线状态。</p>
+<h2 id="问题定位">问题定位</h2>
+<p>测试环境使用约 50 个虚拟设备反复触发离线、上线逻辑，挂载数小时可复现。</p>
+<p>继续添加日志定位问题：</p>
+<ol>
+<li>在kafka处添加Debug打印，确认设备消息是否成功投递到kafka：消息丢失时间点，消息已成功投递到kafka</li>
+<li>新增一个消费者来消费kafka的消息：消息丢失时，新增的消费者正常消费了消息</li>
+</ol>
+<p>这两部分说明kafka消息队列没有问题，下游模块消费消息或是业务处理出现了问题。</p>
+<p>下游模块处理流程：</p>
+<ol>
+<li>kafka 消费线程对包进行解析、封装</li>
+<li>打印日志</li>
+<li>限流判断，如果 TPS 大于 400 则进行限流处理</li>
+<li>扔给业务线程池处理</li>
+<li>打印日志</li>
+<li>后续其他具体业务流程</li>
+</ol>
+<p>2 打印正常、5 没有打印；在测试环境下远没有触发限流，3跳过；因此定位问题出在步骤4，业务线程池的处理出现了问题导致消息丢失。</p>
+<h2 id="线程池">线程池</h2>
+<h3 id="基本概念">基本概念</h3>
+<p>初始化时就建立好线程资源，避免反复创建新的线程造成的资源开销。</p>
+<p>优点</p>
+<ol>
+<li>降低资源消耗：减少新建和销毁线程所调用的资源</li>
+<li>提高响应速度：任务到达时，不需要等待新建线程后执行任务</li>
+<li>提高线程的可管理性：线程是有限的资源，如果创建太多可能会导致系统故障，使用线程池可以做到统一的分配，调用和监控</li>
+</ol>
+<h3 id="相关参数">相关参数</h3>
+<pre><code>threadPool:
+  corePoolSize: 20
+  maximumPoolSize : 2000
+  workQueue : 1000
+  keepAliveSeconds: 300
+</code></pre>
+<ul>
+<li>第1个参数：corePoolSize 表示常驻核心线程数
+<ul>
+<li>如果等于0，则任务执行完成后，没有任何请求进入时销毁线程池的线程</li>
+<li>如果大于0，即使本地任务执行完毕，核心线程也不会被销毁</li>
+<li>这个值的设置非常关键，设置过大会浪费资源，设置的过小会导致线程频繁地创建或销毁</li>
+</ul>
+</li>
+<li>第2个参数：maximumPoolSize 表示线程池能够容纳同时执行的最大线程数
+<ul>
+<li>必须大于或等于1</li>
+<li>如果 maximumPoolSize 与 corePoolSize 相等，即是固定大小线程池。</li>
+</ul>
+</li>
+<li>第3个参数：workQueue 表示缓存队列
+<ul>
+<li>如果线程池里的线程数大于 corePoolSize，就会放到缓存队列</li>
+<li>缓存队列满了会创建新线程到 maximumPoolsize</li>
+<li>当请求的线程数大于 maximumPoolSize 时，会执行设定的策略，默认是拒绝创建策略</li>
+<li>注意：当线程池里的线程数大于 corePoolSize 且小于 maximumPoolSize 时，这时候再有请求的线程就会放到缓存队列，注意只是放到缓存队列但是<strong>不创建新的线程</strong>，直到请求的线程存满缓存队列时，才会开始<strong>创建新的线程</strong>，直到 maxmunPoolSize 就会拒绝创建或者执行提前设定的策略</li>
+</ul>
+</li>
+<li>第4个参数：keepAliveSeconds 表示线程池中的线程空闲时间
+<ul>
+<li>当空闲时间达到 keepAliveSeconds 值时，线程被销毁，直到剩下 corePoolSize 个线程为止，避免浪费内存和句柄资源</li>
+</ul>
+</li>
+</ul>
+<p>线程池工作流程大致如下：</p>
+<pre><code class="language-mermaid">graph LR
+A(开始) --&gt; B[提交任务]
+B --&gt; C{线程池状态是否Running?}
+C --&gt; |是|D{线程数小于核心数?}
+D --&gt; |是|E[添加工作线程并执行]
+E --&gt; F(结束)
+C --&gt; |否|G[任务拒绝]
+G --&gt; F
+D --&gt; |否|H{阻塞队列已满?}
+H --&gt; |是|I{线程数小于最大线程数?}
+I --&gt; |是|E
+I --&gt; |否|G
+H --&gt; |否|J[添加到阻塞队列, 等待工作线程获取执行]
+J --&gt; F
+</code></pre>
+<figure data-type="image" tabindex="2"><img src="https://hill-jiang.github.io/post-images/1697335143083.png" alt="" loading="lazy"></figure>
+<h3 id="拒绝策略">拒绝策略</h3>
+<p>当线程数大于 maximumPoolSize 时，会执行拒绝策略，常见的拒绝策略有四种：</p>
+<ol>
+<li>
+<p>CallerRunsPolicy（调用者运行策略）</p>
+<ul>
+<li>当触发拒绝策略时，只要线程池没有关闭，就由提交任务的当前线程处理</li>
+<li>使用场景：一般在不允许失败的、对性能要求不高、并发量较小的场景下使用，因为线程池一般情况下不会关闭，也就是提交的任务一定会被运行，但是由于是调用者线程自己执行的，当多次提交任务时，就会阻塞后续任务执行，性能和效率自然就慢了。</li>
+</ul>
+</li>
+<li>
+<p>AbortPolicy（中止策略）</p>
+<ul>
+<li>当触发拒绝策略时，直接抛出拒绝执行的异常，中止策略的意思也就是打断当前执行流程</li>
+<li>使用场景：这个就没有特殊的场景了，但是有一点要正确处理抛出的异常。ThreadPoolExecutor 中默认的策略就是 AbortPolicy，ExecutorService 接口的系列 ThreadPoolExecutor 因为都没有显示的设置拒绝策略，所以默认的都是这个。但是请注意，ExecutorService 中的线程池实例队列都是无界的，也就是说把内存撑爆了都不会触发拒绝策略。当自己自定义线程池实例时，使用这个策略一定要处理好触发策略时抛的异常，因为他会打断当前的执行流程</li>
+</ul>
+</li>
+<li>
+<p>DiscardPolicy（丢弃策略）</p>
+<ul>
+<li>直接静悄悄的丢弃这个任务，不触发任何动作</li>
+<li>使用场景：如果你提交的任务无关紧要，你就可以使用它。因为它就是个空实现，会悄无声息的吞噬你的的任务。所以这个策略基本上不用了</li>
+</ul>
+</li>
+<li>
+<p>DiscardOldestPolicy（弃老策略）</p>
+<ul>
+<li>如果线程池未关闭，就弹出队列头部的元素，然后尝试执行</li>
+<li>这个策略还是会丢弃任务，丢弃时也是毫无声息，但是特点是丢弃的是老的未执行的任务，而且是待执行优先级较高的任务。基于这个特性，想到的场景就是，发布消息和修改消息，当消息发布出去后，还未执行，此时更新的消息又来了，这个时候未执行的消息的版本比现在提交的消息版本要低就可以被丢弃了。因为队列中还有可能存在消息版本更低的消息会排队执行，所以在真正处理消息的时候一定要做好消息的版本比较</li>
+</ul>
+</li>
+</ol>
+<p>实际配置的策略为 DiscardOldestPolicy，丢弃队列头部元素，即未执行的最旧的任务。</p>
+<p>所以当阻塞队列已满、并且线程数也已经达到了最大线程数的时候，就会执行拒绝策略，导致消息丢失。</p>
+<p>最终该问题定位的原因是线上消息压力过大，而配置的线程池参数过小、拒绝策略不合理，导致出现任务拒绝丢失消息。</p>
+<h3 id="合理设置线程池参数">合理设置线程池参数</h3>
+<p>首先确定以下几个相关参数：</p>
+<ul>
+<li>avgTasks，程序每秒需要处理的平均任务数量</li>
+<li>maxTasks，程序每秒需要处理的最大任务数量</li>
+<li>taskHandleTime，单线程处理一个任务所需要的时间</li>
+<li>responsetime，系统允许任务最大的响应时间</li>
+<li>peakTime，任务峰值持续时间</li>
+</ul>
+<p>根据这几个参数，可以算出核心线程数、任务队列长度、最大线程数、线程空闲时间的推荐值</p>
+<ul>
+<li>
+<p>corePoolSize：常驻核心线程数</p>
+<ul>
+<li>核心线程数需要能够满足平均负载</li>
+<li><code>corePoolSize = avgTasks * taskHandleTime</code></li>
+</ul>
+</li>
+<li>
+<p>maximumPoolSize：最大线程数</p>
+<ul>
+<li>在峰值时，最大线程数需要能够处理所有的任务</li>
+<li><code>maximumPoolSize = maxTasks * taskHandleTime</code></li>
+</ul>
+</li>
+<li>
+<p>workQueue：缓存队列长度</p>
+<ul>
+<li>缓存队列的长度是在核心线程满载和最大线程数之间的差距所能处理的任务数量，需要确保在响应时间内，队列中的任务可以被处理</li>
+<li><code>workQueue = (maximumPoolSize - corePoolSize) * responseTime / taskHandleTime</code></li>
+</ul>
+</li>
+<li>
+<p>keepAliveSeconds：最长线程空闲时间</p>
+<ul>
+<li>当负载降低时，可减少线程数量，如果一个线程空闲时间达到 keepAliveTiime，该线程就销毁</li>
+<li>keepAliveTiime 是一个经验值，具体的值可能需要根据实际情况进行调整，也可根据任务峰值持续时间 peakTime 来设定</li>
+</ul>
+</li>
+</ul>
+
+                </div>
+            </article>
+        </div>
+
+        
+            <div class="next-post">
+                <div class="next gt-c-content-color-first">下一篇</div>
+                <a href="https://hill-jiang.github.io/post/bao-wen-chuan-shu-zhong-de-url-bian-ma-wen-ti/" class="post-title gt-a-link">
+                    报文传输中的 url 编码问题
+                </a>
+            </div>
+        
+
+        
+
+        
+
+        
+
+        <div class="site-footer gt-c-content-color-first">
+    <div class="slogan gt-c-content-color-first">惟学无际</div>
+    <div class="social-container">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    </div>
+    <div class="footer-info">
+        Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+    </div>
+    <div>
+        Theme by <a href="https://imhanjie.com/" target="_blank">imhanjie</a>, Powered by <a
+                href="https://github.com/getgridea/gridea" target="_blank">Gridea | <a href="https://hill-jiang.github.io/atom.xml" target="_blank">RSS</a></a>
+    </div>
+</div>
+
+<script>
+  hljs.initHighlightingOnLoad()
+</script>
+
+    </div>
+</div>
+</body>
+</html>

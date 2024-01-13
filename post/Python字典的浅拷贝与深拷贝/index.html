@@ -1,0 +1,196 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<meta name="description" content=""/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>Python 字典的浅拷贝与深拷贝 | Hill&#39;s Blog</title>
+
+<link rel="shortcut icon" href="https://hill-jiang.github.io/favicon.ico?v=1705114048924">
+
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hill-jiang.github.io/styles/main.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dockerfile.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dart.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.27.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+<!-- DEMO JS -->
+<!--<script src="media/scripts/index.js"></script>-->
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.css">
+</head>
+<body>
+<div class="main gt-bg-theme-color-first">
+    <nav class="navbar navbar-expand-lg">
+    <div class="navbar-brand">
+        <img class="user-avatar" src="/images/avatar.png" alt="头像">
+        <div class="site-name gt-c-content-color-first">
+            Hill&#39;s Blog
+        </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-bars gt-c-content-color-first" style="font-size: 18px"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="navbar-nav mr-auto" style="text-align: center">
+            
+                <div class="nav-item">
+                    
+                        <a href="/" class="menu gt-a-link">
+                            首页
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/archives" class="menu gt-a-link">
+                            归档
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/tags" class="menu gt-a-link">
+                            标签
+                        </a>
+                    
+                </div>
+            
+        </div>
+        <div style="text-align: center">
+            <form id="gridea-search-form" style="position: relative" data-update="1705114048924" action="/search/index.html">
+                <input class="search-input" autocomplete="off" spellcheck="false" name="q" placeholder="搜索文章" />
+                <i class="fas fa-search gt-c-content-color-first" style="position: absolute; top: 9px; left: 10px;"></i>
+            </form>
+        </div>
+    </div>
+</nav>
+
+    <div class="post-container">
+        <div class="post-detail gt-bg-theme-color-second">
+            <article class="gt-post-content">
+                <h2 class="post-title">
+                    Python 字典的浅拷贝与深拷贝
+                </h2>
+                <div class="post-info">
+                    <time class="post-time gt-c-content-color-first">
+                        · 2023-10-02 ·
+                    </time>
+                    
+                        <a href="https://hill-jiang.github.io/tag/X1d9ds5kfn/" class="post-tags">
+                            # Python
+                        </a>
+                    
+                </div>
+                <div class="post-content">
+                    <p>最近在写 Python 脚本的时候用到了字典的拷贝，踩了一个坑，在此记录一下</p>
+<p>对于 Python 字典，如果直接用<code>=</code>赋值，修改一个字典会同时修改另一个：</p>
+<pre><code>Python 3.7.4 (tags/v3.7.4:e09359112e, Jul  8 2019, 20:34:20) [MSC v.1916 64 bit (AMD64)] on win32
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&gt;&gt;&gt; dict_1 = {'1': 1}
+&gt;&gt;&gt; dict_2 = dict_1
+&gt;&gt;&gt; dict_2['1'] = 2
+&gt;&gt;&gt; dict_2
+{'1': 2}
+&gt;&gt;&gt; dict_1
+{'1': 2}
+</code></pre>
+<p>一般使用<code>copy()</code>方法进行拷贝，在修改拷贝后的字典时，不会影响原来的字典：</p>
+<pre><code>Python 3.7.4 (tags/v3.7.4:e09359112e, Jul  8 2019, 20:34:20) [MSC v.1916 64 bit (AMD64)] on win32
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&gt;&gt;&gt; dict_1 = {'1': 1}
+&gt;&gt;&gt; dict_2 = dict_1.copy()
+&gt;&gt;&gt; dict_2['1'] = 2
+&gt;&gt;&gt; dict_2
+{'1': 2}
+&gt;&gt;&gt; dict_1
+{'1': 1}
+</code></pre>
+<p>但是，当字典超过一层时，修改<code>copy()</code>后的键值时会同样修改原字典的键值：</p>
+<pre><code>&gt;&gt;&gt; dict_3 = {'1': {'1': 3}}
+&gt;&gt;&gt; dict_4 = dict_3.copy()
+&gt;&gt;&gt; dict_4['1']['1'] = 4
+&gt;&gt;&gt; dict_4
+{'1': {'1': 4}}
+&gt;&gt;&gt; dict_3
+{'1': {'1': 4}}
+</code></pre>
+<p>后来网上查了一下才知道，Python 字典的拷贝分为浅拷贝和深拷贝</p>
+<p><code>copy()</code>为浅拷贝，只拷贝字典的父级目录；而<code>deepcopy()</code>为深拷贝，会将整个字典全都拷贝</p>
+<p>使用<code>deepcopy()</code>需要导入<code>copy</code>模块</p>
+<pre><code>Python 3.7.4 (tags/v3.7.4:e09359112e, Jul  8 2019, 20:34:20) [MSC v.1916 64 bit (AMD64)] on win32
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&gt;&gt;&gt; import copy
+&gt;&gt;&gt; dict_3 = {'1': {'1': 3}}
+&gt;&gt;&gt; dict_4 = copy.deepcopy(dict_3)
+&gt;&gt;&gt; dict_4['1']['1'] = 4
+&gt;&gt;&gt; dict_4
+{'1': {'1': 4}}
+&gt;&gt;&gt; dict_3
+{'1': {'1': 3}}
+</code></pre>
+
+                </div>
+            </article>
+        </div>
+
+        
+            <div class="next-post">
+                <div class="next gt-c-content-color-first">下一篇</div>
+                <a href="https://hill-jiang.github.io/post/Python 进程间通信/" class="post-title gt-a-link">
+                    Python 进程间通信初探
+                </a>
+            </div>
+        
+
+        
+
+        
+
+        
+
+        <div class="site-footer gt-c-content-color-first">
+    <div class="slogan gt-c-content-color-first">惟学无际</div>
+    <div class="social-container">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    </div>
+    <div class="footer-info">
+        Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+    </div>
+    <div>
+        Theme by <a href="https://imhanjie.com/" target="_blank">imhanjie</a>, Powered by <a
+                href="https://github.com/getgridea/gridea" target="_blank">Gridea | <a href="https://hill-jiang.github.io/atom.xml" target="_blank">RSS</a></a>
+    </div>
+</div>
+
+<script>
+  hljs.initHighlightingOnLoad()
+</script>
+
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,406 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+<meta name="description" content=""/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<title>rtmp+flv服务搭建与基于python的flv流获取 | Hill&#39;s Blog</title>
+
+<link rel="shortcut icon" href="https://hill-jiang.github.io/favicon.ico?v=1705114048924">
+
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://hill-jiang.github.io/styles/main.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/css/bootstrap.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dockerfile.min.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.15.10/languages/dart.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.27.0/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.min.js"></script>
+<!-- DEMO JS -->
+<!--<script src="media/scripts/index.js"></script>-->
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.css">
+</head>
+<body>
+<div class="main gt-bg-theme-color-first">
+    <nav class="navbar navbar-expand-lg">
+    <div class="navbar-brand">
+        <img class="user-avatar" src="/images/avatar.png" alt="头像">
+        <div class="site-name gt-c-content-color-first">
+            Hill&#39;s Blog
+        </div>
+    </div>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fas fa-bars gt-c-content-color-first" style="font-size: 18px"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="navbar-nav mr-auto" style="text-align: center">
+            
+                <div class="nav-item">
+                    
+                        <a href="/" class="menu gt-a-link">
+                            首页
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/archives" class="menu gt-a-link">
+                            归档
+                        </a>
+                    
+                </div>
+            
+                <div class="nav-item">
+                    
+                        <a href="/tags" class="menu gt-a-link">
+                            标签
+                        </a>
+                    
+                </div>
+            
+        </div>
+        <div style="text-align: center">
+            <form id="gridea-search-form" style="position: relative" data-update="1705114048924" action="/search/index.html">
+                <input class="search-input" autocomplete="off" spellcheck="false" name="q" placeholder="搜索文章" />
+                <i class="fas fa-search gt-c-content-color-first" style="position: absolute; top: 9px; left: 10px;"></i>
+            </form>
+        </div>
+    </div>
+</nav>
+
+    <div class="post-container">
+        <div class="post-detail gt-bg-theme-color-second">
+            <article class="gt-post-content">
+                <h2 class="post-title">
+                    rtmp+flv服务搭建与基于python的flv流获取
+                </h2>
+                <div class="post-info">
+                    <time class="post-time gt-c-content-color-first">
+                        · 2023-10-15 ·
+                    </time>
+                    
+                        <a href="https://hill-jiang.github.io/tag/Z_aKsriYh/" class="post-tags">
+                            # 音视频
+                        </a>
+                    
+                </div>
+                <div class="post-content">
+                    <h2 id="背景">背景</h2>
+<p>最近有个项目，用户可以在微信小程序上直接预览监控点，而不用额外下载 APP</p>
+<p>之前只能通过 APP 预览，基联 APP 的接口编写过模拟多路并行预览的工具</p>
+<p>但是小程序的鉴权方式完全不一致，而且预览流程也完全不一样（基于 HTTP+FLV），针对小程序的预览模拟，需要编写另外的脚本工具</p>
+<p>另外也立项了 RTMP 推流的需求，为了提前了解下相关协议，也为了方便脚本调试，尝试在本地搭建了相关服务并进行了脚本模拟拉流测试</p>
+<h2 id="本地服务搭建">本地服务搭建</h2>
+<p>本地搭建的推流、拉流框架如下：</p>
+<figure data-type="image" tabindex="1"><img src="https://hill-jiang.github.io/post-images/1697334009505.png" alt="" loading="lazy"></figure>
+<ol>
+<li>启动 nginx，开启 RTMP 服务，配置 HTTP 开启 FLV 服务</li>
+<li>通过 ffmpeg 将视频文件转码推流到 RTMP 服务</li>
+<li>通过 VLC 等拉流工具，使用 RTMP 协议或 FLV 协议进行拉流</li>
+</ol>
+<h3 id="nginx-http-flv-module-源码编译">nginx-http-flv-module 源码编译</h3>
+<p>nginx 本身是不支持流媒体功能的，开发者们为其添加了额外的流媒体功能，比如开源的 nginx-http-flv-module 但需要重新编译</p>
+<p>Windows 上源码编译 nginx 环境配置很麻烦，直接找编译好的包，解压就能使用</p>
+<p>万恶的 CSDN 上倒是有很多，但都要付费下载</p>
+<p>经过不懈努力终于在 github 上找到了一个编译好的包：https://github.com/chen-jia-hao/nginx-win-httpflv-1.19.0</p>
+<h3 id="nginx-配置文件修改">nginx 配置文件修改</h3>
+<p>修改 <code>conf/nginx.conf</code></p>
+<pre><code>worker_processes  1;
+ 
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+#error_log  logs/error.log  debug;
+ 
+#pid        logs/nginx.pid;
+ 
+events {
+    worker_connections  1024;
+}
+
+rtmp_auto_push on;
+rtmp_auto_push_reconnect 1s;
+rtmp_socket_dir temp;
+ 
+# 添加RTMP服务
+rtmp {
+    server {
+        listen 1935; # 监听端口
+ 
+        chunk_size 4000;
+        application live {
+            live on;
+            gop_cache on; # GOP缓存，on时延迟高，但第一帧画面加载快。off时正好相反，延迟低，第一帧加载略慢。
+        }
+    }
+}
+ 
+# HTTP服务
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+ 
+    #access_log  logs/access.log  main;
+ 
+    server {
+        listen       80; # 监听端口
+        
+        location / {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
+            add_header Access-Control-Allow-Headers 'DNT,X-Mx-ReqToken,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization';
+
+            if ($request_method = 'OPTIONS') {
+                return 204;
+            }
+            
+            root html;
+        }
+        
+        location /live {
+            flv_live on; #打开HTTP播放FLV直播流功能
+            chunked_transfer_encoding on; #支持'Transfer-Encoding: chunked'方式回复
+
+            add_header 'Access-Control-Allow-Origin' '*'; #添加额外的HTTP头
+            add_header 'Access-Control-Allow-Credentials' 'true'; #添加额外的HTTP头
+        }
+ 
+        location /stat.xsl {
+            root html;
+        }
+        location /stat {
+            rtmp_stat all;
+            rtmp_stat_stylesheet stat.xsl;
+        }
+        
+        location /control {
+            rtmp_control all; #rtmp控制模块的配置
+        }
+        
+    }
+}
+
+</code></pre>
+<h3 id="启动-nginx">启动 nginx</h3>
+<pre><code>start nginx -c conf/nginx.conf
+</code></pre>
+<h3 id="ffmpeg-推流">ffmpeg 推流</h3>
+<pre><code>ffmpeg -stream_loop -1 -re -i 诸葛亮王朗.mp4 -vcodec libx264 -acodec aac -f flv rtmp://localhost:1935/live/123
+</code></pre>
+<h3 id="vlc-拉流">VLC 拉流</h3>
+<p>VLC 媒体-打开网络串流：</p>
+<pre><code>http://localhost/live?port=1935&amp;app=live&amp;stream=123
+</code></pre>
+<p>随后即可播放：</p>
+<figure data-type="image" tabindex="2"><img src="https://hill-jiang.github.io/post-images/1697334037696.png" alt="" loading="lazy"></figure>
+<h2 id="python-获取-flv-视频流">Python 获取 FLV 视频流</h2>
+<p>因为目的是模拟多路并发预览，考虑用 Python 脚本实现多路并行获取 FLV 视频流，调研对比了多种实现方案</p>
+<h3 id="基于-opencv-库">基于 OpenCV 库</h3>
+<p>OpenCV 库提供了简单的 API，可直接获取网络视频流保存到本地文件：</p>
+<pre><code class="language-python">import cv2
+
+def save_video(flv_url):  
+    cap = cv2.VideoCapture(flv_url)  
+    fps = cap.get(cv2.CAP_PROP_FPS)  
+    size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))  
+    fourcc = cv2.VideoWriter_fourcc('F', 'L', 'V', '1')  
+    video_file = 'video/test.flv'
+    out_video = cv2.VideoWriter(video_file, fourcc, fps, size)  
+    rval, frame = cap.read()  
+    while rval:  
+        out_video.write(frame)  
+        rval, frame = cap.read()  
+        cv2.waitKey(1)  
+    cap.release()  
+    out_video.release()
+</code></pre>
+<p>实测保存的本地文件可以用 VLC 或 ffplay 直接播放</p>
+<p>但我的需求是模拟多路并发预览，OpenCV 库提供的获取流方法是阻塞式的，没法套用已有的 async 协程框架，想要实现多并发得用多线程等方式实现</p>
+<p>为了复用之前的框架，同时也为了更深入地理解 FLV 协议，还是决定用 asyncio 直接建立 Socket 连接试试</p>
+<h3 id="基于-socket-连接">基于 Socket 连接</h3>
+<p>HTTP-FLV，即将音视频数据封装成 FLV，然后通过 HTTP 协议传输给客户端。</p>
+<p>建立连接后，需要发送 FLV 协议规定的 HTTP 请求头，比如用 VLC 拉流，抓包看到建立 TCP 连接后，发送的 HTTP 请求及响应如下：</p>
+<figure data-type="image" tabindex="3"><img src="https://hill-jiang.github.io/post-images/1697334054908.png" alt="" loading="lazy"></figure>
+<p>因为服务器并不知道流的长度，所以响应的 HTTP 头并没有携带 <code>Content-Length</code> 字段，而是携带 <code>Transfer-Encoding: chunked</code> 字段，这样客户端就会一直接收数据了</p>
+<p>编写脚本用 asyncio 直接建立 Socket 连接，获取数据保存到本地文件：</p>
+<pre><code class="language-python">import asyncio
+import async_timeout
+from urllib.parse import urlparse
+
+async def save_video(flv_url):
+    video_file = &quot;video/test.flv&quot;
+    if os.path.exists(video_file):
+        os.remove(video_file)
+    flv_hostname = urlparse(flv_url).hostname
+    flv_port = &quot;80&quot;
+    flv_path = urlparse(flv_url).path
+    flv_query = urlparse(flv_url).query
+    try:
+        with async_timeout.timeout(20):
+            reader, writer = await asyncio.open_connection(flv_hostname, flv_port)
+            print(&quot;Flv Server Connected&quot;)
+    except asyncio.TimeoutError:
+        print(&quot;Connection Timeout!&quot;)
+    except ConnectionError:
+        print(&quot;Connection Failed!&quot;)
+    try:
+        header = &quot;&quot;&quot;GET {}?{} HTTP/1.1
+Host: {}
+Accept: */*
+Accept-Language: zh_CN
+User-Agent: VLC/3.0.8 LibVLC/3.0.8
+Range: bytes=0-
+
+&quot;&quot;&quot;.format(flv_path, flv_query, flv_hostname)
+        writer.write(header.encode())
+        await writer.drain()
+        recv_data = await reader.read(1024)
+        recv_header = recv_data.split(b'\r\n\r\n')[0]
+        print(recv_header.decode())
+        if 'HTTP/1.1 200 OK' in recv_header.decode():
+            print(&quot;Video Get Success&quot;)
+            if recv_data.split(b'\r\n\r\n')[1]:
+                flv_header_index = recv_data.split(b'\r\n\r\n')[1].find(b'\x46\x4C\x56')
+                flv_header = recv_data.split(b'\r\n\r\n')[1][flv_header_index:]
+                with open(video_file, 'wb') as fd:
+                    fd.write(flv_header)
+            else:
+                recv_data = await reader.read(1024)
+                flv_header_index = recv_data.find(b'\x46\x4C\x56')
+                flv_header = recv_data[flv_header_index:]
+                with open(video_file, 'wb') as fd:
+                    fd.write(flv_header)
+            while True:
+                recv_data = await reader.read(1024)
+                with open(video_file, 'wb') as fd:
+                    fd.write(recv_data)
+    except ConnectionError:
+        print(&quot;Connection Failed!&quot;)
+</code></pre>
+<p>其中 <code>b'\x46\x4C\x56'</code> 对应 <code>FLV</code>，即 FLV 头部，从服务器响应的 FLV 头部开始的数据保存到文件中，但是保存下来的文件却无法通过 ffplay 或 VLC 播放</p>
+<p>对比保存的文件内容，与抓包结果一致：</p>
+<figure data-type="image" tabindex="4"><img src="https://hill-jiang.github.io/post-images/1697334066905.png" alt="" loading="lazy"></figure>
+<p>再对比通过 OpenCV 保存的文件，虽然可以播放，但是与抓包结果的 FLV 头部却不一样：</p>
+<figure data-type="image" tabindex="5"><img src="https://hill-jiang.github.io/post-images/1697334073380.png" alt="" loading="lazy"></figure>
+<p>说明 OpenCV 在获取视频流数据、保存到文件的时候就对头部做了一些处理，让其可以正常播放</p>
+<p>而直接把通过 Socket 获取到的二进制数据保存到文件，其 FLV 头部并不是合法的格式，所以无法直接播放</p>
+<h3 id="基于-requests">基于 requests</h3>
+<p>查找资料的时候发现，基于 requests 库可以直接用 get 方法获取 HTTP-FLV 数据，同样可以保存到文件：</p>
+<pre><code class="language-python">import requests
+
+def save_video_requests(flv_url):
+    video_file = &quot;video/test_requests.flv&quot;
+    if os.path.exists(video_file):
+        os.remove(video_file)
+    chunk_size = 1024
+    response = requests.get(flv_url, stream=True, verify=False)
+    with open(video_file, 'wb') as file:
+        for data in response.iter_content(chunk_size = chunk_size):
+            file.write(data)
+            file.flush()
+</code></pre>
+<p>尝试了一下发现此方法保存的文件同样可以直接播放，对比抓包结果与文件内容如下：</p>
+<figure data-type="image" tabindex="6"><img src="https://hill-jiang.github.io/post-images/1697334079970.png" alt="" loading="lazy"></figure>
+<p>发现好像保存的文件就是去掉了抓包结果中的一些换行符（<code>0d0a</code>），部分换行符前面还有一些数据，看来也是保存的时候底层做了一些处理。</p>
+<p>其实换行符和部分换行符前面的数据是 HTTP 分块传输编码规则导致的：</p>
+<ol>
+<li>每个分块包含两个部分，长度头和数据块；</li>
+<li>长度头是以 CRLF（回车换行，即 <code>\r\n</code>）结尾的一行明文，用 16 进制数字表示长度；</li>
+<li>数据块紧跟在长度头后，最后也用 CRLF 结尾，但数据不包含 CRLF；</li>
+<li>最后用一个长度为 0 的块表示结束，即 <code>0\r\n\r\n</code>。</li>
+</ol>
+<figure data-type="image" tabindex="7"><img src="https://hill-jiang.github.io/post-images/1697334087062.png" alt="" loading="lazy"></figure>
+<p>所以我们只要在保存数据的时候，只保存 <code>chunked data</code>，把 <code>length</code> 和换行符都过滤掉就可以了</p>
+<p>这原理看起来简单，但真要直接处理二进制数据还比较复杂</p>
+<p>不过既然 requests 可以实现，那协程的 aiohttp 应该也可以吧</p>
+<h3 id="基于-aiohttp">基于 aiohttp</h3>
+<pre><code class="language-python">import aiohttp
+
+async def save_video_aiohttp(flv_url):
+    video_file = &quot;video/test_aiohttp.flv&quot;
+    if os.path.exists(video_file):
+        os.remove(video_file)
+    chunk_size = 1024
+    conn = aiohttp.TCPConnector()
+    async with aiohttp.ClientSession(connector=conn) as session:
+        async with session.get(flv_url) as response:
+            with open(video_file, 'wb') as file:
+                while True:
+                    data = await response.content.read(chunk_size)
+                    if not data:
+                        break
+                    file.write(data)
+                    file.flush()
+</code></pre>
+<p>测试能通过 ffplay 和 VLC 正常播放，aiohttp 套入协程框架也很方便，最终就决定用这种方式了</p>
+<h2 id="参考">参考</h2>
+<ul>
+<li>https://www.cnblogs.com/hhmm99/p/16050844.html</li>
+<li>https://github.com/winshining/nginx-http-flv-module</li>
+<li>https://github.com/chen-jia-hao/nginx-win-httpflv-1.19.0</li>
+<li>https://www.cnblogs.com/vczf/p/14813438.html</li>
+<li>https://blog.csdn.net/Enderman_xiaohei/article/details/102626855</li>
+</ul>
+
+                </div>
+            </article>
+        </div>
+
+        
+            <div class="next-post">
+                <div class="next gt-c-content-color-first">下一篇</div>
+                <a href="https://hill-jiang.github.io/post/博客收集/" class="post-title gt-a-link">
+                    博客收集
+                </a>
+            </div>
+        
+
+        
+
+        
+
+        
+
+        <div class="site-footer gt-c-content-color-first">
+    <div class="slogan gt-c-content-color-first">惟学无际</div>
+    <div class="social-container">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    </div>
+    <div class="footer-info">
+        Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+    </div>
+    <div>
+        Theme by <a href="https://imhanjie.com/" target="_blank">imhanjie</a>, Powered by <a
+                href="https://github.com/getgridea/gridea" target="_blank">Gridea | <a href="https://hill-jiang.github.io/atom.xml" target="_blank">RSS</a></a>
+    </div>
+</div>
+
+<script>
+  hljs.initHighlightingOnLoad()
+</script>
+
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,1558 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://hill-jiang.github.io</id>
+    <title>Hill&apos;s Blog</title>
+    <updated>2024-01-13T02:47:38.432Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://hill-jiang.github.io"/>
+    <link rel="self" href="https://hill-jiang.github.io/atom.xml"/>
+    <subtitle>惟学无际</subtitle>
+    <logo>https://hill-jiang.github.io/images/avatar.png</logo>
+    <icon>https://hill-jiang.github.io/favicon.ico</icon>
+    <rights>All rights reserved 2024, Hill&apos;s Blog</rights>
+    <entry>
+        <title type="html"><![CDATA[不合理的设计实现是如何引发性能问题的]]></title>
+        <id>https://hill-jiang.github.io/post/bu-he-li-de-she-ji-shi-xian-shi-ru-he-yin-fa-xing-neng-wen-ti-de/</id>
+        <link href="https://hill-jiang.github.io/post/bu-he-li-de-she-ji-shi-xian-shi-ru-he-yin-fa-xing-neng-wen-ti-de/">
+        </link>
+        <updated>2024-01-13T02:41:19.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="背景">背景</h2>
+<p>前段时间出了不少性能相关的市场反馈，某大型连锁店客户在使用云平台时频繁出现卡顿现象，基本不可用；甚至在其使用期间，由于大量占用了系统资源服务，导致后端接口响应时间明显边长，影响了其他用户的支持使用</p>
+<h2 id="客户配置信息">客户配置信息</h2>
+<ul>
+<li>
+<p>连锁店项目，所有设备放在同一个项目中进行管理</p>
+</li>
+<li>
+<p>每个一级区域对应一个城市，每个二级区域对应一个门店</p>
+</li>
+<li>
+<p>每个门店添加一个NVR，关联若干IPC通道</p>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>设备</th>
+<th>数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>总监控点数</td>
+<td>10000</td>
+</tr>
+<tr>
+<td>NVR</td>
+<td>2000</td>
+</tr>
+<tr>
+<td>每个 NVR 下的通道数</td>
+<td>1 到 16</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>区域</th>
+<th>数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一级区域</td>
+<td>500</td>
+</tr>
+<tr>
+<td>二级区域</td>
+<td>每个一级区域下包含 1-50 个二级区域，共 2000 个二级区域</td>
+</tr>
+</tbody>
+</table>
+<h2 id="问题原因">问题原因</h2>
+<p>假设有以下带有层级的树状区域结构：</p>
+<pre><code class="language-Plain">|-一级区域1
+    |-二级区域1-1
+    |-二级区域1-2
+    |-二级区域1-3
+    ...
+|-一级区域2
+    |-二级区域2-1
+    |-二级区域2-2
+    |-二级区域2-3
+    ...
+...
+</code></pre>
+<p>有多个一级区域，且每个区域下有多个二级区域</p>
+<p>进入设备管理页面，前端会发送如下请求给后端：</p>
+<table>
+<thead>
+<tr>
+<th>请求</th>
+<th>请求参数</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>getRootRegions</td>
+<td>-</td>
+<td>获取所有一级区域</td>
+</tr>
+<tr>
+<td>getRegionChildren</td>
+<td>rootRegionId</td>
+<td>获取特定一级区域下的所有二级区域</td>
+</tr>
+<tr>
+<td>getDeviceList</td>
+<td>regionId</td>
+<td>获取特定区域下的设备列表</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>
+<p>区域相关的所有请求，不分页，也就是 getRootRegions 会响应所有一级区域的信息，getRegionChildren 会响应所有特定区域下的子区域，不管响应结果会有多少个</p>
+</li>
+<li>
+<p>进入页面时，会完整请求所有区域，以及所有区域下的设备信息</p>
+</li>
+<li>
+<p>区域提供搜索功能，搜索由前端实现，所以要完整加载所有区域信息后才能实现搜索</p>
+</li>
+</ul>
+<p><code>请求数量 = 1（getRootRegions） + 总一级区域数量（getRegionChildren） + 总区域数量（getDeviceList）</code></p>
+<p>这样一来，一进入页面，就会发送多个请求，请求数量随区域数量的增加而线性增加，导致在区域数量很多时，并行发送了大量请求给后端</p>
+<p>从该客户的配置情况来看，前端会发送<code>1+500+(500+2000)=3001</code>个请求，并行发大量请求带来的影响有：</p>
+<ul>
+<li>
+<p>浏览器一般会限制并行请求数量，前面的请求未得到响应时，后发的请求暂时阻塞，导致大量请求被阻塞，响应时间长，响应可能出现超时导致服务不可用</p>
+</li>
+<li>
+<p>并行请求数量太多，服务器资源占用突增，后端服务器响应时间变长</p>
+</li>
+</ul>
+<h2 id="优化方案">优化方案</h2>
+<p>该问题虽然可以认为是性能问题（配置少的情况下不会出现、配置多的情况下出现），但是从直接原因来看，是前后端设计实现不合理导致的，因此针对此页面提出如下几个改进方案：</p>
+<ul>
+<li>
+<p>所有获取区域功能，添加分页接口，一次获取有限数量的信息，直到页面滚动或者用户手动点击加载更多才按需加载更多区域</p>
+</li>
+<li>
+<p>所有需要搜索区域的功能，添加搜索接口，搜索由后端实现</p>
+</li>
+<li>
+<p>所有请求设备的接口，只请求当前选中区域的设备、未选中区域的设备不请求</p>
+</li>
+</ul>
+<p>如此一来，就能大大减少页面发送的请求数量，而对用户体验基本又不会有影响，后续采用此方案优化效果明显</p>
+<h3 id="引入的其他问题">引入的其他问题</h3>
+<p>实际改动提测后，发现涉及到区域勾选+搜索的页面（设置角色权限时，可以批量勾选其拥有权限的区域），会遇到问题。</p>
+<ul>
+<li>
+<p>因为当前是分页加载的，前端在加载完成之前并不知道有多少区域</p>
+</li>
+<li>
+<p>如果勾选了父区域，子区域也被选中，前端传参直接是父区域ID</p>
+</li>
+<li>
+<p>考虑如下场景：此时如果取消勾选某个子区域，父区域会变成半选状态，但是如果子区域过多、一页没有加载完，直接确认，前端传参就会变成这一页的所有勾选的子区域ID，剩下没加载的子区域因为前端不知道具体信息，所以不会传给后端，导致实际结果与预期不符</p>
+</li>
+<li>
+<p>进一步的，涉及勾选后再搜索、搜索后再清除某些已搜索的内容，都会因为前端没有获取过完整的树结构，导致一些不符合预期的结果（讨论过搜索清空已选的方案，认为与实际用户习惯不符，不能接受）</p>
+</li>
+</ul>
+<p>这个问题相对比较棘手，讨论了很久都没有好的解决方案，于是去看了看竞品有没有类似的页面（树组织结构+父子层级+多选）</p>
+<h3 id="解决方案">解决方案</h3>
+<p>海康云眸社区：<a href="https://www.hik-cloud.com/neptune/index.html">https://www.hik-cloud.com/neptune/index.html</a></p>
+<p>有相似功能的有两个页面，其实现还不一样：</p>
+<ul>
+<li>
+<p>父子组织树结构+搜索功能</p>
+<ul>
+<li>
+<p>分页获取</p>
+</li>
+<li>
+<p>搜索后端完成</p>
+</li>
+</ul>
+</li>
+<li>
+<p>父子组织树结构+勾选功能+搜索功能</p>
+<ul>
+<li>
+<p>不分页直接获取完整组织树</p>
+</li>
+<li>
+<p>搜索前端完成</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>参考这个实现，又想到是不是可以不分页、前端获取完整组织树、搜索前端完成</p>
+<p>之前出现性能问题的场景是，有多个根区域、每个根区域又有子区域，这时候获取完根区域之后再去遍历获取每个根区域的子区域，导致并行发送的请求数量很多</p>
+<p>可以考虑新增一个获取完整区域树结构的接口：</p>
+<ul>
+<li>
+<p>输入 projectId，输出所有区域信息</p>
+</li>
+<li>
+<p>输出区域信息不包含层级关系，通过 regionBranch（regionId 完整路径） 来标示父子接哦故</p>
+</li>
+<li>
+<p>前端用区域信息来构造完整的区域树（一个请求搞定）</p>
+</li>
+<li>
+<p>搜索功能仍然有前端来完成，保留勾选状态</p>
+</li>
+<li>
+<p>父子组织树结构+勾选功能+搜索功能的页面使用频次很少，低频次的完整组织树获取也不会对服务有太大影响</p>
+</li>
+<li>
+<p>从竞品情况来看，3000+个区域，单个接口的响应大小在200K左右（其regionId为40位string，相对较长），单个接口的响应时间在100ms左右，都可以接受</p>
+</li>
+<li>
+<p>后端接口性能上，响应的都是数据库已有字段，projectId 已加索引，性能风险不大 <code>SELECT regionId, regionName, regionBranch, order form region_info where projectId='xxx';</code></p>
+</li>
+<li>
+<p>需要再评估一下前端性能</p>
+</li>
+</ul>
+<pre><code class="language-Plain">POST /tums/resources/getRegionTree
+Request:
+{
+    &quot;projectId&quot;: &quot;123&quot;
+}
+Response:
+{
+    &quot;result&quot;: [
+        {
+            &quot;regionId&quot;：&quot;1&quot;,
+            &quot;regionName&quot;: &quot;一&quot;,
+            &quot;regionBranch&quot;: &quot;1-&quot;，
+            &quot;order&quot;: 1
+        },
+        {
+            &quot;regionId&quot;: &quot;2&quot;,
+            &quot;regionName&quot;: &quot;二&quot;,
+            &quot;regionBranch&quot;: &quot;1-2-&quot;,
+            &quot;order&quot;: 1
+        }
+    ],
+    &quot;error_code&quot;: 0
+}
+</code></pre>
+<h2 id="总结与反思">总结与反思</h2>
+<ul>
+<li>
+<p>遇到性能问题，先从设计实现的角度去看看，有没有实现不合理的地方，再去着手考虑优化</p>
+</li>
+<li>
+<p>前端资源按需加载，一次加载不必要的资源，不仅加大了服务压力，还导致响应时间延长影响用户体验</p>
+</li>
+<li>
+<p>一个问题有解决方案后，不一定对所有业务功能都通用，要灵活考虑</p>
+</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[JMeter实现并行发送携带列表参数中某一项的请求]]></title>
+        <id>https://hill-jiang.github.io/post/jmeter-shi-xian-bing-xing-fa-song-xi-dai-lie-biao-can-shu-zhong-mou-yi-xiang-de-qing-qiu/</id>
+        <link href="https://hill-jiang.github.io/post/jmeter-shi-xian-bing-xing-fa-song-xi-dai-lie-biao-can-shu-zhong-mou-yi-xiang-de-qing-qiu/">
+        </link>
+        <updated>2023-11-28T14:15:47.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="需求背景">需求背景</h2>
+<p>最近项目新增了一个后端接口，功能大概就是传入区域的ID，响应该区域下所有的设备信息。</p>
+<p>针对这个新增接口做性能测试，需要测试响应成功率、最大吞吐量等指标，涉及到HTTP请求的并行发送和结果信息收集。这次打算不用之前自己写python脚本的方式，改用JMeter试试看。</p>
+<p>用JMeter实现上述测试需求的过程中，遇到了一些问题，自己摸索了一下解决方案，记录一下。</p>
+<h2 id="问题">问题</h2>
+<p>使用JMeter自带的JSON提取器，从获取区域信息的响应中获取regionId的值后，被保存到了一个列表中，实际上是一组JMeterVariables。</p>
+<figure data-type="image" tabindex="1"><img src="https://hill-jiang.github.io/post-images/1701180976262.png" alt="" loading="lazy"></figure>
+<p>我需要遍历这个列表，再用这个列表中的每一项作为请求体来并行发送请求。比如获取到了50个regionId，并行发送50个请求，每个请求的请求体包含一个regionId的值，类似：</p>
+<pre><code class="language-python">for i in range(50):
+    payload = {&quot;regionId&quot;: region_id[i]}
+</code></pre>
+<p>一开始打算用JMeter的并行处理插件 parallel controller 和 forEach controller 来实现循环遍历和并行发送请求，但是发现无论是 parallel 在 forEach 控制器下，还是 forEach 在 parallel 下，都还是串行发送的请求。</p>
+<p>猜测这个问题可能和插件实现机制有关，每个 forEach controller 都还是在一个线程中串行创建的。</p>
+<p>不用 forEach，用 while 控制器 + 计数器来实现遍历，也是一样的结果。</p>
+<h2 id="解决方案">解决方案</h2>
+<p>既然在同一个线程组里面没法用 parallel controller 来实现并行，那只能考虑用多个线程组来实现了，这就又涉及到了线程组之间的变量传递，我需要把上一个线程组中获取到的变量列表传递到下一个线程组中去。</p>
+<p>折腾了一圈，最终用 BeanShell取样器+CSV文件存储的方式实现了。</p>
+<ol>
+<li>添加一个 BeanShell取样器。在取样器中，编写脚本，把 regionId 的列表长度设置为全局变量，再把每个 regionId 都写入 csv 文件中去。这里不循环遍历把所有 regionId 都写到全局变量是因为研究了半天没弄出来<code>__setProperty</code>方法怎么加上变量索引。</li>
+</ol>
+<pre><code class="language-java">FileWriter fstream = new FileWriter(&quot;F:/Documents/JMeter/result/src/regionId.csv&quot;,false);
+BufferedWriter out = new BufferedWriter(fstream);
+
+${__setProperty(regionNum,${regionIds_matchNr},)}
+
+for(int i=1;i&lt;=${regionIds_matchNr};i++) {
+	String regionId_value = vars.get(&quot;regionIds_&quot; + i);
+//	log.info(regionId_value);
+	out.write(regionId_value+&quot;\n&quot;);
+}
+out.close();
+fstream.close();
+</code></pre>
+<ol start="2">
+<li>
+<p>创建一个线程组，线程数设置为<code>${__property(regionNum)}</code>，表示并行运行 regionId 数组长度个线程。Ramp-Up 时间可以根据测试需要自行设置合适值。循环次数设置为 1 ，并不需要重复运行。</p>
+</li>
+<li>
+<p>在新创建的线程组中，添加 CSV数据文件设置，读取在上一个线程组中写入的 csv 文件，保存到变量中，比如 <code>regionId</code>，每个线程会自动把 csv 文件中当前线程数对应的行写入这个变量。</p>
+</li>
+<li>
+<p>创建 HTTP 请求，请求参数设置为<code>{&quot;regionId&quot;: &quot;${regionId}&quot;}</code>即可。</p>
+</li>
+</ol>
+<blockquote>
+<p>不要忘了在 Test Plan 中勾选“独立运行每个线程组”，否则所有线程组将一起启动。</p>
+</blockquote>
+<p>可以看到，请求基本上都是并行发送的了。</p>
+<figure data-type="image" tabindex="2"><img src="https://hill-jiang.github.io/post-images/1701180986892.png" alt="" loading="lazy"></figure>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[git升级踩坑]]></title>
+        <id>https://hill-jiang.github.io/post/git-sheng-ji-cai-keng/</id>
+        <link href="https://hill-jiang.github.io/post/git-sheng-ji-cai-keng/">
+        </link>
+        <updated>2023-10-27T12:44:47.000Z</updated>
+        <content type="html"><![CDATA[<p>git升级踩坑</p>
+<h2 id="问题">问题</h2>
+<p>最近升级了一下 pycharm，重启提示 git 版本不受支持，然后就找了个最新版本的 git 升级<br>
+升级完之后，发现 <code>git pull</code> 报错，<code>Permission denied (publickey).</code></p>
+<h2 id="排查">排查</h2>
+<p>这个报错之前见过，没配 SSH key 就是这个报错<br>
+一开始以为是 git 升级完要重新配一下 SSH key，心想怎么这么不智能<br>
+重新生成完了，在 gerrit 上也重新 Add 新生成的 SSH key 了，报错还是一样，重新 <code>git clone</code> 也是一样的报错<br>
+眉头一皱，一搜，有大坑。</p>
+<h2 id="问题原因">问题原因</h2>
+<p>GIT 2.33.1 版本集成了最新的 OpenSSH v8.8p1版本，此版本放弃了历史相当悠久的 rsa-sha1的支持。<br>
+2.33 以上的版本，如果再用 rsa 来生成 SSH Key，就会产生问题，需要更换密钥</p>
+<h2 id="解决方案">解决方案</h2>
+<h3 id="方案一">方案一</h3>
+<p>如果你急需访问仓库，而暂时不想修改密钥，可以在密钥所在的. ssh 目录下的 config 文件（没有的话自行创建）添加如下配置即可访问。</p>
+<pre><code>Host git.xxxxxx.com
+HostkeyAlgorithms +ssh-rsa
+PubkeyAcceptedAlgorithms +ssh-rsa
+</code></pre>
+<h3 id="方案二">方案二</h3>
+<p>重新生成更安全的密钥。<br>
+在生成之前，要确定服务器是否支持相应的密钥加密算法。<br>
+使用 ECDSA 或者 ED25519 算法替代 RSA 以一个不错的选择。</p>
+<pre><code>ssh-keygen -t ed25519 -C &quot;your@example.email&quot;
+</code></pre>
+<h3 id="方案三">方案三</h3>
+<p>回滚 git 版本</p>
+<h3 id="方案四">方案四</h3>
+<p>windows 版本的 git 安装的时候，可以选择“use external OpenSSH”。这样可以不使用内置的 OpenSSH。可以指定一个可用的 OpenSSH 安装路径。<br>
+最终确认 gerrit 支持更安全的密钥算法，就用方案二解决了。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[线程池参数设置不合理导致的消息丢失问题]]></title>
+        <id>https://hill-jiang.github.io/post/xian-cheng-chi-can-shu-she-zhi-bu-he-li-dao-zhi-de-xiao-xi-diu-shi-wen-ti/</id>
+        <link href="https://hill-jiang.github.io/post/xian-cheng-chi-can-shu-she-zhi-bu-he-li-dao-zhi-de-xiao-xi-diu-shi-wen-ti/">
+        </link>
+        <updated>2023-10-15T01:46:45.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="问题背景">问题背景</h2>
+<ul>
+<li>充电桩使用4G流量卡上网，在4G信号不稳定的情况下，可能出现设备离线</li>
+<li>生产环境中，偶现充电桩掉线后，始终没有在云平台重新上线，导致用户扫码提示设备故障无法使用</li>
+<li>而实际设备已经在线，在云平台 WEB 上手动同步设备信息后，设备恢复在线状态，可以正常使用</li>
+</ul>
+<h2 id="业务流程">业务流程</h2>
+<p>以设备上线为例，设备首先和云平台的设备连接层建立socket连接交互，连接层模块会产生一个上线事件，发到kafka的topic上，下游模块消费后，经过业务处理，转发给云平台的设备管理模块，设备管理模块收到消息后修改对应的设备在线状态、触发消息提醒。</p>
+<pre><code class="language-sequence">participant 设备 as d
+participant 设备连接层 as c
+participant kafka as k
+participant 下游模块 as h
+participant 云平台 as b
+
+d-&gt;c: 建立连接
+note over d, c: 长连接
+c-&gt;k: 设备上线事件
+k-&gt;h: 消费消息
+note over h: 业务处理
+h-&gt;b: 消息转发
+note over b: 产生消息提示
+note over b: 修改设备在线状态
+</code></pre>
+<figure data-type="image" tabindex="1"><img src="https://hill-jiang.github.io/post-images/1697335133892.png" alt="" loading="lazy"></figure>
+<p>根据日志，初步定位问题原因是云平台未收到设备上线的消息，导致无法正确修改设备在线状态。</p>
+<h2 id="问题定位">问题定位</h2>
+<p>测试环境使用约 50 个虚拟设备反复触发离线、上线逻辑，挂载数小时可复现。</p>
+<p>继续添加日志定位问题：</p>
+<ol>
+<li>在kafka处添加Debug打印，确认设备消息是否成功投递到kafka：消息丢失时间点，消息已成功投递到kafka</li>
+<li>新增一个消费者来消费kafka的消息：消息丢失时，新增的消费者正常消费了消息</li>
+</ol>
+<p>这两部分说明kafka消息队列没有问题，下游模块消费消息或是业务处理出现了问题。</p>
+<p>下游模块处理流程：</p>
+<ol>
+<li>kafka 消费线程对包进行解析、封装</li>
+<li>打印日志</li>
+<li>限流判断，如果 TPS 大于 400 则进行限流处理</li>
+<li>扔给业务线程池处理</li>
+<li>打印日志</li>
+<li>后续其他具体业务流程</li>
+</ol>
+<p>2 打印正常、5 没有打印；在测试环境下远没有触发限流，3跳过；因此定位问题出在步骤4，业务线程池的处理出现了问题导致消息丢失。</p>
+<h2 id="线程池">线程池</h2>
+<h3 id="基本概念">基本概念</h3>
+<p>初始化时就建立好线程资源，避免反复创建新的线程造成的资源开销。</p>
+<p>优点</p>
+<ol>
+<li>降低资源消耗：减少新建和销毁线程所调用的资源</li>
+<li>提高响应速度：任务到达时，不需要等待新建线程后执行任务</li>
+<li>提高线程的可管理性：线程是有限的资源，如果创建太多可能会导致系统故障，使用线程池可以做到统一的分配，调用和监控</li>
+</ol>
+<h3 id="相关参数">相关参数</h3>
+<pre><code>threadPool:
+  corePoolSize: 20
+  maximumPoolSize : 2000
+  workQueue : 1000
+  keepAliveSeconds: 300
+</code></pre>
+<ul>
+<li>第1个参数：corePoolSize 表示常驻核心线程数
+<ul>
+<li>如果等于0，则任务执行完成后，没有任何请求进入时销毁线程池的线程</li>
+<li>如果大于0，即使本地任务执行完毕，核心线程也不会被销毁</li>
+<li>这个值的设置非常关键，设置过大会浪费资源，设置的过小会导致线程频繁地创建或销毁</li>
+</ul>
+</li>
+<li>第2个参数：maximumPoolSize 表示线程池能够容纳同时执行的最大线程数
+<ul>
+<li>必须大于或等于1</li>
+<li>如果 maximumPoolSize 与 corePoolSize 相等，即是固定大小线程池。</li>
+</ul>
+</li>
+<li>第3个参数：workQueue 表示缓存队列
+<ul>
+<li>如果线程池里的线程数大于 corePoolSize，就会放到缓存队列</li>
+<li>缓存队列满了会创建新线程到 maximumPoolsize</li>
+<li>当请求的线程数大于 maximumPoolSize 时，会执行设定的策略，默认是拒绝创建策略</li>
+<li>注意：当线程池里的线程数大于 corePoolSize 且小于 maximumPoolSize 时，这时候再有请求的线程就会放到缓存队列，注意只是放到缓存队列但是<strong>不创建新的线程</strong>，直到请求的线程存满缓存队列时，才会开始<strong>创建新的线程</strong>，直到 maxmunPoolSize 就会拒绝创建或者执行提前设定的策略</li>
+</ul>
+</li>
+<li>第4个参数：keepAliveSeconds 表示线程池中的线程空闲时间
+<ul>
+<li>当空闲时间达到 keepAliveSeconds 值时，线程被销毁，直到剩下 corePoolSize 个线程为止，避免浪费内存和句柄资源</li>
+</ul>
+</li>
+</ul>
+<p>线程池工作流程大致如下：</p>
+<pre><code class="language-mermaid">graph LR
+A(开始) --&gt; B[提交任务]
+B --&gt; C{线程池状态是否Running?}
+C --&gt; |是|D{线程数小于核心数?}
+D --&gt; |是|E[添加工作线程并执行]
+E --&gt; F(结束)
+C --&gt; |否|G[任务拒绝]
+G --&gt; F
+D --&gt; |否|H{阻塞队列已满?}
+H --&gt; |是|I{线程数小于最大线程数?}
+I --&gt; |是|E
+I --&gt; |否|G
+H --&gt; |否|J[添加到阻塞队列, 等待工作线程获取执行]
+J --&gt; F
+</code></pre>
+<figure data-type="image" tabindex="2"><img src="https://hill-jiang.github.io/post-images/1697335143083.png" alt="" loading="lazy"></figure>
+<h3 id="拒绝策略">拒绝策略</h3>
+<p>当线程数大于 maximumPoolSize 时，会执行拒绝策略，常见的拒绝策略有四种：</p>
+<ol>
+<li>
+<p>CallerRunsPolicy（调用者运行策略）</p>
+<ul>
+<li>当触发拒绝策略时，只要线程池没有关闭，就由提交任务的当前线程处理</li>
+<li>使用场景：一般在不允许失败的、对性能要求不高、并发量较小的场景下使用，因为线程池一般情况下不会关闭，也就是提交的任务一定会被运行，但是由于是调用者线程自己执行的，当多次提交任务时，就会阻塞后续任务执行，性能和效率自然就慢了。</li>
+</ul>
+</li>
+<li>
+<p>AbortPolicy（中止策略）</p>
+<ul>
+<li>当触发拒绝策略时，直接抛出拒绝执行的异常，中止策略的意思也就是打断当前执行流程</li>
+<li>使用场景：这个就没有特殊的场景了，但是有一点要正确处理抛出的异常。ThreadPoolExecutor 中默认的策略就是 AbortPolicy，ExecutorService 接口的系列 ThreadPoolExecutor 因为都没有显示的设置拒绝策略，所以默认的都是这个。但是请注意，ExecutorService 中的线程池实例队列都是无界的，也就是说把内存撑爆了都不会触发拒绝策略。当自己自定义线程池实例时，使用这个策略一定要处理好触发策略时抛的异常，因为他会打断当前的执行流程</li>
+</ul>
+</li>
+<li>
+<p>DiscardPolicy（丢弃策略）</p>
+<ul>
+<li>直接静悄悄的丢弃这个任务，不触发任何动作</li>
+<li>使用场景：如果你提交的任务无关紧要，你就可以使用它。因为它就是个空实现，会悄无声息的吞噬你的的任务。所以这个策略基本上不用了</li>
+</ul>
+</li>
+<li>
+<p>DiscardOldestPolicy（弃老策略）</p>
+<ul>
+<li>如果线程池未关闭，就弹出队列头部的元素，然后尝试执行</li>
+<li>这个策略还是会丢弃任务，丢弃时也是毫无声息，但是特点是丢弃的是老的未执行的任务，而且是待执行优先级较高的任务。基于这个特性，想到的场景就是，发布消息和修改消息，当消息发布出去后，还未执行，此时更新的消息又来了，这个时候未执行的消息的版本比现在提交的消息版本要低就可以被丢弃了。因为队列中还有可能存在消息版本更低的消息会排队执行，所以在真正处理消息的时候一定要做好消息的版本比较</li>
+</ul>
+</li>
+</ol>
+<p>实际配置的策略为 DiscardOldestPolicy，丢弃队列头部元素，即未执行的最旧的任务。</p>
+<p>所以当阻塞队列已满、并且线程数也已经达到了最大线程数的时候，就会执行拒绝策略，导致消息丢失。</p>
+<p>最终该问题定位的原因是线上消息压力过大，而配置的线程池参数过小、拒绝策略不合理，导致出现任务拒绝丢失消息。</p>
+<h3 id="合理设置线程池参数">合理设置线程池参数</h3>
+<p>首先确定以下几个相关参数：</p>
+<ul>
+<li>avgTasks，程序每秒需要处理的平均任务数量</li>
+<li>maxTasks，程序每秒需要处理的最大任务数量</li>
+<li>taskHandleTime，单线程处理一个任务所需要的时间</li>
+<li>responsetime，系统允许任务最大的响应时间</li>
+<li>peakTime，任务峰值持续时间</li>
+</ul>
+<p>根据这几个参数，可以算出核心线程数、任务队列长度、最大线程数、线程空闲时间的推荐值</p>
+<ul>
+<li>
+<p>corePoolSize：常驻核心线程数</p>
+<ul>
+<li>核心线程数需要能够满足平均负载</li>
+<li><code>corePoolSize = avgTasks * taskHandleTime</code></li>
+</ul>
+</li>
+<li>
+<p>maximumPoolSize：最大线程数</p>
+<ul>
+<li>在峰值时，最大线程数需要能够处理所有的任务</li>
+<li><code>maximumPoolSize = maxTasks * taskHandleTime</code></li>
+</ul>
+</li>
+<li>
+<p>workQueue：缓存队列长度</p>
+<ul>
+<li>缓存队列的长度是在核心线程满载和最大线程数之间的差距所能处理的任务数量，需要确保在响应时间内，队列中的任务可以被处理</li>
+<li><code>workQueue = (maximumPoolSize - corePoolSize) * responseTime / taskHandleTime</code></li>
+</ul>
+</li>
+<li>
+<p>keepAliveSeconds：最长线程空闲时间</p>
+<ul>
+<li>当负载降低时，可减少线程数量，如果一个线程空闲时间达到 keepAliveTiime，该线程就销毁</li>
+<li>keepAliveTiime 是一个经验值，具体的值可能需要根据实际情况进行调整，也可根据任务峰值持续时间 peakTime 来设定</li>
+</ul>
+</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[报文传输中的 url 编码问题]]></title>
+        <id>https://hill-jiang.github.io/post/bao-wen-chuan-shu-zhong-de-url-bian-ma-wen-ti/</id>
+        <link href="https://hill-jiang.github.io/post/bao-wen-chuan-shu-zhong-de-url-bian-ma-wen-ti/">
+        </link>
+        <updated>2023-10-15T01:45:19.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="url-编码">url 编码</h2>
+<ul>
+<li>当 url 路径，或者查询参数中带有中文、特殊字符的时候，就需要对 url 进行编码（采用十六进制编码格式）。url 编码的原则是使用安全字符（即没有特殊用途或者特殊意义的字符）去表示那些不安全的字符。</li>
+<li>对于特殊字符来说，url 编码就是一个字符 ascii 码的十六进制。（ASCII 码使用 8 位二进制数的组合来表示不同的字符，也就是一个字节的大小。其中常规的 ASCII 码，最高位是 0，所以总共可以表示 128 个字符。） 不过稍微有些变动，需要在前面加上 <code>%</code>。 比如 <code>\</code>，它的 ascii 码是 92，92 的十六进制是 5c，所以 <code>\</code> 的 url 编码就是%5c。</li>
+<li>对于中文来说，url 编码是将其转换为 Unicode 码，再转化为十六进制的 UTF-8 编码，最后加上%。</li>
+<li>url 编码使用后跟十六进制数字的 &quot;%&quot; 替代不安全的 ASCII 字符。</li>
+<li>url 不能包含空格。url 编码通常使用加号（+）或 %20 替代空格。</li>
+</ul>
+<p>RFC3986 文档规定，url 中只允许包含以下四种：</p>
+<ol>
+<li>英文字母（a-zA-Z）</li>
+<li>数字（0-9）</li>
+<li><code>-_.~</code> 4 个特殊字符</li>
+<li>所有保留字符，RFC3986 中指定了以下字符为保留字符（英文字符）： <code> ! * ' ( ) ; : @ &amp; = + $, / ? # [ ]</code></li>
+</ol>
+<p>所谓保留字符，就是在 url 中具有特定意义的字符。</p>
+<p>常见 url 编码转换表</p>
+<table>
+<thead>
+<tr>
+<th>编码前</th>
+<th>编码后</th>
+<th>编码前</th>
+<th>编码后</th>
+<th>编码前</th>
+<th>编码后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>space</td>
+<td>%20</td>
+<td>*</td>
+<td>%2A</td>
+<td>&gt;</td>
+<td>%3E</td>
+</tr>
+<tr>
+<td>!</td>
+<td>%21</td>
+<td>+</td>
+<td>%2B</td>
+<td>?</td>
+<td>%3F</td>
+</tr>
+<tr>
+<td>&quot;</td>
+<td>%22</td>
+<td>,</td>
+<td>%2C</td>
+<td>@</td>
+<td>%40</td>
+</tr>
+<tr>
+<td>#</td>
+<td>%23</td>
+<td>-</td>
+<td>%2D</td>
+<td>[</td>
+<td>%5B</td>
+</tr>
+<tr>
+<td>$</td>
+<td>%24</td>
+<td>.</td>
+<td>%2E</td>
+<td>\</td>
+<td>%5C</td>
+</tr>
+<tr>
+<td>%</td>
+<td>%25</td>
+<td>/</td>
+<td>%2F</td>
+<td>]</td>
+<td>%5D</td>
+</tr>
+<tr>
+<td>&amp;</td>
+<td>%26</td>
+<td>:</td>
+<td>%3A</td>
+<td>^</td>
+<td>%5E</td>
+</tr>
+<tr>
+<td>'</td>
+<td>%27</td>
+<td>;</td>
+<td>%3B</td>
+<td>_</td>
+<td>%5F</td>
+</tr>
+<tr>
+<td>(</td>
+<td>%28</td>
+<td>&lt;</td>
+<td>%3C</td>
+<td>`</td>
+<td>%60</td>
+</tr>
+<tr>
+<td>)</td>
+<td>%29</td>
+<td>=</td>
+<td>%3D</td>
+<td>{</td>
+<td>%7B</td>
+</tr>
+<tr>
+<td>|</td>
+<td>%7C</td>
+<td>}</td>
+<td>%7D</td>
+<td>~</td>
+<td>%7E</td>
+</tr>
+</tbody>
+</table>
+<h2 id="测试需要注意的点">测试需要注意的点</h2>
+<p>集中存储、监控点上墙等场景，传输的是 url 地址，需要重点关注用户名/密码包含所有保留字符的表现，因为后端在处理 url、从中提取用户名、密码、IP 等信息时，可能会遇到保留字符。</p>
+<p>设置设备名称等场景，原则上用户输入可以是任意字符，在HTTP传输过程中，为了确保数据的正确性和可靠性，通常需要对payload进行URL编码处理，这也就导致了所有需要进行HTTP传输的场景，客户端需要将原始用户输入进行URL编码传输、而将从服务端收到的数据进行URL解码显示，其中一个环节出现问题就可能导致传输或显示异常。<br>
+此时需要关注所有 url 编解码相关的字符。</p>
+<p>可能存在风险的字符：</p>
+<ul>
+<li>空格</li>
+<li>所有保留字符</li>
+<li><code>%</code> 本身</li>
+<li>编码后的字符，比如 <code>%20、%21</code> 等</li>
+</ul>
+<hr>
+<h2 id="各编程语言的url编解码方式">各编程语言的url编解码方式</h2>
+<p>Python：</p>
+<ul>
+<li><code>urllib.parse.quote</code>和<code>urllib.parse.unquote</code>：这是Python标准库中提供的url编解码函数，可以将字符进行url编码或解码。</li>
+</ul>
+<pre><code>lang=Python
+
+import urllib.parse
+
+# url编码
+url = 'https://www.example.com/search?q=Python 编程'
+encoded_url = urllib.parse.quote(url)
+print(encoded_url)  # https%3A//www.example.com/search%3Fq%3DPython%20%E7%BC%96%E7%A8%8B
+
+# url解码
+decoded_url = urllib.parse.unquote(encoded_url)
+print(decoded_url)  # https://www.example.com/search?q=Python 编程
+</code></pre>
+<ul>
+<li><code>requests.utils.quote</code>和<code>requests.utils.unquote</code>：这是requests库中提供的url编解码函数，与<code>urllib.parse</code>类似。</li>
+</ul>
+<pre><code>lang=Python
+
+import requests.utils
+
+# url编码
+url = 'https://www.example.com/search?q=Python 编程'
+encoded_url = requests.utils.quote(url)
+print(encoded_url)  # https%3A//www.example.com/search%3Fq%3DPython%20%E7%BC%96%E7%A8%8B
+
+# url解码
+decoded_url = requests.utils.unquote(encoded_url)
+print(decoded_url)  # https://www.example.com/search?q=Python 编程
+</code></pre>
+<p>Java：</p>
+<ul>
+<li><code>java.net.URLEncoder</code>和<code>java.net.URLDecoder</code>：这是Java标准库中提供的URL编解码类，可以将字符串进行URL编码或解码</li>
+</ul>
+<pre><code>lang=Java
+
+import java.net.URLEncoder;
+import java.net.URLDecoder;
+
+// URL编码
+String url = &quot;https://www.example.com/search?q=Java 编程&quot;;
+String encodedUrl = URLEncoder.encode(url, &quot;UTF-8&quot;);
+System.out.println(encodedUrl);  // https%3A%2F%2Fwww.example.com%2Fsearch%3Fq%3DJava+%E7%BC%96%E7%A8%8B
+
+// URL解码
+String decodedUrl = URLDecoder.decode(encodedUrl, &quot;UTF-8&quot;);
+System.out.println(decodedUrl);  // https://www.example.com/search?q=Java 编程
+</code></pre>
+<ul>
+<li><code>org.apache.commons.codec.net.URLCodec</code>：这是Apache Commons Codec库中提供的URL编解码类，与<code>java.net.URLEncoder</code>和<code>java.net.URLDecoder</code>类似</li>
+</ul>
+<pre><code>lang=Java
+
+import org.apache.commons.codec.net.URLCodec;
+
+// URL编码
+String url = &quot;https://www.example.com/search?q=Java 编程&quot;;
+String encodedUrl = new URLCodec().encode(url);
+System.out.println(encodedUrl);  // https%3A%2F%2Fwww.example.com%2Fsearch%3Fq%3DJava+%E7%BC%96%E7%A8%8B
+
+// URL解码
+String decodedUrl = new URLCodec().decode(encodedUrl);
+System.out.println(decodedUrl);  // https://www.example.com/search?q=Java 编程
+</code></pre>
+<p>C：</p>
+<p>C语言中没有标准库提供URL编解码函数，一般手动实现。</p>
+<pre><code>lang=C
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;ctype.h&gt;
+
+// URL编码函数
+char *urlencode(const char *str) {
+    const char *hex = &quot;0123456789ABCDEF&quot;;
+    size_t len = strlen(str);
+    char *buf = malloc(len * 3 + 1), *pbuf = buf;
+    for (size_t i = 0; i &lt; len; i++) {
+        if (isalnum(str[i]) || strchr(&quot;-_.~&quot;, str[i])) {
+            *(pbuf++) = str[i];
+        } else if (str[i] == ' ') {
+            *(pbuf++) = '+';
+        } else {
+            *(pbuf++) = '%';
+            *(pbuf++) = hex[(unsigned char) str[i] &gt;&gt; 4];
+            *(pbuf++) = hex[(unsigned char) str[i] &amp; 15];
+        }
+    }
+    *pbuf = '\0';
+    return buf;
+}
+
+// URL解码函数
+char *urldecode(const char *str) {
+    size_t len = strlen(str);
+    char *buf = malloc(len + 1), *pbuf = buf;
+    for (size_t i = 0; i &lt; len; i++) {
+        if (str[i] == '+') {
+            *(pbuf++) = ' ';
+        } else if (str[i] == '%' &amp;&amp; isxdigit(str[i + 1]) &amp;&amp; isxdigit(str[i + 2])) {
+            int ch;
+            sscanf(&amp;str[i + 1], &quot;%02x&quot;, &amp;ch);
+            *(pbuf++) = ch;
+            i += 2;
+        } else {
+            *(pbuf++) = str[i];
+        }
+    }
+    *pbuf = '\0';
+    return buf;
+}
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[TLS 是如何导致报文长度膨胀的]]></title>
+        <id>https://hill-jiang.github.io/post/tls-shi-ru-he-dao-zhi-bao-wen-chang-du-peng-zhang-de/</id>
+        <link href="https://hill-jiang.github.io/post/tls-shi-ru-he-dao-zhi-bao-wen-chang-du-peng-zhang-de/">
+        </link>
+        <updated>2023-10-15T01:41:45.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="问题背景">问题背景</h2>
+<p>最近 4G 充电桩的项目遇到一个问题，实测设备每天消耗的 4G 流量，远远超出理论计算的值</p>
+<p>能够理解 TCP 头部、IP 头部、以太网头部等网络协议头导致报文长度增长，但从实际抓包情况来看，去掉这些网络协议头后的报文长度，也远超出原始明文长度：</p>
+<ol>
+<li>设备端发送明文的心跳报文长度应该是 34 字节，为什么加密后实际发了 64+96 字节？云端的心跳报文回复长度应该是 28 字节，为什么加密后实际收到了 80 字节？</li>
+<li>为什么设备与云端交互时，总会发送两个报文，第一个报文的长度始终为 64 字节？</li>
+</ol>
+<figure data-type="image" tabindex="1"><img src="https://hill-jiang.github.io/post-images/1697334170660.png" alt="" loading="lazy"></figure>
+<p>为了搞清楚原因，决定从 TLS 协议入手进行分析</p>
+<h2 id="tls-协议">TLS 协议</h2>
+<p>SSL/TLS 是一种密码通信框架，他是世界上使用最广泛的密码通信方法。SSL/TLS 综合运用了密码学中的对称密码，消息认证码，公钥密码，数字签名，伪随机数生成器等，可以说是密码学中的集大成者</p>
+<p>SSL(Secure Socket Layer)安全套接层，是 1994 年由 Netscape 公司设计的一套协议，并与 1995 年发布了 3.0 版本</p>
+<p>TLS(Transport Layer Security)传输层安全是 IETF 在 SSL3.0 基础上设计的协议，实际上相当于 SSL 的后续版本</p>
+<p>TLS 协议主要分为两层，底层是 TLS 记录协议，负责使用对称密码对消息进行加密</p>
+<p>上层是 TLS 握手协议，负责在客户端和服务端商定密码算法和共享密钥</p>
+<h3 id="tls-握手协议">TLS 握手协议</h3>
+<figure data-type="image" tabindex="2"><img src="https://hill-jiang.github.io/post-images/1697334186017.png" alt="" loading="lazy"></figure>
+<figure data-type="image" tabindex="3"><img src="https://hill-jiang.github.io/post-images/1697334193433.png" alt="" loading="lazy"></figure>
+<p>从抓包来看，我们的设备和基础云进行 TLS 握手时，经历了以下阶段：</p>
+<ol>
+<li>
+<p>Client Hello，客户端向服务器端发送一个 client hello 的消息，包含下面内容：<br>
+<img src="https://hill-jiang.github.io/post-images/1697334204213.png" alt="" loading="lazy"></p>
+<p>可用版本号、当前时间、客户端随机数、会话 ID、可用的密码套件清单、可用的压缩方式清单</p>
+</li>
+<li>
+<p>Server Hello，服务器端收到 client hello 消息后，会向客户端返回一个 server hello 消息，包含如下内容：<br>
+<img src="https://hill-jiang.github.io/post-images/1697334214081.png" alt="" loading="lazy"><br>
+使用的版本号、当前时间、服务器随机数、会话 ID、使用的密码套件、使用的压缩方式<br>
+可以看到，我们的设备和基础云协商的加密方式为 <code>TLS_RSA_WITH_AES_128_CBC_SHA256</code>，压缩方式无</p>
+</li>
+<li>
+<p>Certificate，服务端发送自己的证书清单，因为证书可能是层级结构的，所以除了服务器自己的证书之外，还需要发送为服务器签名的证书<br>
+<img src="https://hill-jiang.github.io/post-images/1697334228430.png" alt="" loading="lazy"></p>
+</li>
+<li>
+<p>Server Hello Done，服务器端发送 server hello done 的消息告诉客户端自己的消息结束了<br>
+![image-20220820163300335](TLS 是如何导致报文长度膨胀的.assets/image-20220820163300335.png)</p>
+</li>
+<li>
+<p>Client Key Exchange，公钥或者 RSA 模式情况下，客户端将根据客户端生成的随机数和服务器端生成的随机数，生成预备主密码，通过该公钥进行加密，返送给服务器端<br>
+<img src="https://hill-jiang.github.io/post-images/1697334237964.png" alt="" loading="lazy"></p>
+</li>
+<li>
+<p>Client Change Cipher Spec、Finish，客户端准备切换密码，表示后面的消息将会以前面协商过的密钥进行加密<br>
+<img src="https://hill-jiang.github.io/post-images/1697334246444.png" alt="" loading="lazy"></p>
+</li>
+<li>
+<p>Server Change Cipher Spec、Finish，服务端准备切换密码，表示后面的消息将会以前面协商过的密钥进行加密<br>
+<img src="https://hill-jiang.github.io/post-images/1697334256791.png" alt="" loading="lazy"></p>
+</li>
+</ol>
+<h3 id="tls-记录协议">TLS 记录协议</h3>
+<figure data-type="image" tabindex="4"><img src="https://hill-jiang.github.io/post-images/1697334262857.png" alt="" loading="lazy"></figure>
+<p>TLS 记录协议主要负责消息的压缩，加密及数据的认证</p>
+<p>首先，消息被分割成多个较短的片段，然后分别对每个片段进行压缩，压缩算法需要与通信对象协商决定</p>
+<p>接下来，经过压缩的片段会被加上消息认证码，这是为了保证完整性，并进行数据的认证。通过附加消息认证码的 MAC 值，可以识别出篡改。与此同时，为了防止重放攻击，在计算消息认证码时，还加上了片段的编码。单项散列的函数的算法，以及消息认证码所使用的共享密钥都需要与通信对象协商决定</p>
+<p>再接下来，经过压缩的片段再加上消息认证码会一起通过对称加密进行加密。加密使用 CBC 模式，CBC 模式的初始向量 IV 通过主密码生成，而对称密码的算法以及共享密码需要与通信对象协商决定</p>
+<figure data-type="image" tabindex="5"><img src="https://hill-jiang.github.io/post-images/1697334273781.png" alt="" loading="lazy"></figure>
+<h2 id="分析">分析</h2>
+<p>从握手阶段的 ServerHello 报文，我们知道了此次通信无压缩、使用的加密方式为 <code>TLS_RSA_WITH_AES_128_CBC_SHA256</code></p>
+<p>这个加密方式实际上分为了好几个部分：</p>
+<ul>
+<li>RSA 表示使用 RSA 非对称加密来传输 AES 密钥</li>
+<li>AES_128_CBC 表示应用数据使用 AES_128_CBC 模式来加密</li>
+<li>SHA256 表示生成 MAC 的摘要算法使用 SHA256</li>
+</ul>
+<h3 id="rsa">RSA</h3>
+<p>个没啥好分析的，握手阶段就已经通过 RSA 进行了 AES 密钥传输</p>
+<h3 id="aes_128_cbc">AES_128_CBC</h3>
+<p>AES_128_CBC 是一种分组对称加密算法，即用同一组 key 进行明文和密文的转换，key 的长度为 128bit：</p>
+<ul>
+<li>
+<p>以 128bit 为一组，128bit=16Byte，意思就是明文的 16 字节为一组，对应加密后的 16 字节的密文</p>
+</li>
+<li>
+<p>若最后剩余的明文不够 16 字节，需要进行填充，通常采用 PKCS7 进行填充。比如最后缺 3 个字节，则填充 3 个字节的 0x03；若最后缺 10 个字节，则填充 10 个字节的 0x0a</p>
+</li>
+<li>
+<p>若明文正好是 16 个字节的整数倍，最后要再加入一个 16 字节 0x10 的组再进行加密</p>
+</li>
+<li>
+<p>CBC 模式为：用初始向量和密钥加密第一组数据，然后把第一组数据加密后的密文重新赋值给 IV，然后进行第二组加密，循环进行直到结束</p>
+</li>
+</ul>
+<p>那么通过 AES_128_CBC 加密原始明文，得到的最终长度一定是 16 字节的整数倍，会导致 1-16 字节的膨胀（密文长度比明文长度大 1-16 字节）</p>
+<h3 id="sha256">SHA256</h3>
+<p>对于任意长度的消息，SHA256 都会产生一个 256 位的哈希值，也就是 32 个字节。</p>
+<p>在 TLS 记录协议中，对压缩后的消息片段进行 MAC 值的计算用的散列函数就是 SHA256，详细的 MAC 值计算方法不展开了，反正最终 MAC 长度是 32 字节。</p>
+<h3 id="加密数据长度">加密数据长度</h3>
+<p>回到 TLS 记录协议上，TLS 1.2 记录协议中，报文经过 ASE_CBC 块加密后的完整组成结构如下：</p>
+<pre><code>struct {
+    opaque IV[SecurityParameters.record_iv_length];
+    block-ciphered struct {
+        opaque content[TLSCompressed.length];
+        opaque MAC[SecurityParameters.mac_length];
+        uint8 padding[GenericBlockCipher.padding_length];
+        uint8 padding_length;
+    };
+} GenericBlockCipher
+</code></pre>
+<p>总长度 = 向量 IV 长度 + 明文压缩后的长度 + MAC 长度 + 填充长度</p>
+<ul>
+<li>IV 是指 AES_CBC 加密是使用的初始向量，其长度为块加密的 block_size，在 AES 加密中为 16 字节</li>
+<li>无压缩，压缩后长度为原始明文长度</li>
+<li>MAC 长度为 32 字节</li>
+<li>填充长度为 1-16 字节</li>
+</ul>
+<p>再来看看设备发的心跳报文，原始明文为 34 字节，拆成了 64 字节和 96 字节两个包发送，猜测是这样的：</p>
+<ul>
+<li>第一个包：length = 0（plainText） + 16（IV） + 32（MAC） + 16（padding） = 64</li>
+<li>第二个包：length = 34（plainText） + 16（IV） + 32（MAC） + 14（padding） = 96</li>
+</ul>
+<p>至于为什么设备端总会发送数据之前发送一个内容为空的包，就涉及到具体设备端实现了，参考资料中有提到 <code>发送 fragment 长度为 0 的应用数据在进行流量分析时是有用的</code></p>
+<p>云端回复的报文，原始明文为 28 字节，实际加密后为 80 字节：</p>
+<p>length = 28（plainText） + 16（IV） + 32（MAC） + 4（padding） = 80</p>
+<p>至此，TLS 加密导致报文长度膨胀的原因基本弄清楚了</p>
+<h2 id="总结">总结</h2>
+<p>设备和云端使用 TLS 加密协议进行通信，协商的通信方法是 <code>TLS_RSA_WITH_AES_128_CBC_SHA256</code>，因为块加密填充、计算消息认证码等原因导致加密后的消息长度原大于原始明文长度</p>
+<p>设备在发送消息时，总会把先发送一个原始明文长度为 0 的消息，与设备端实现有关</p>
+<p>具体到 4G 充电桩这个项目上，产品让步不再进行流量限制，后续如果有对使用流量极为敏感的设备，可从加密角度着手，优化通信方式和加密协议，减少 TLS 加密带来的报文长度膨胀</p>
+<h2 id="参考">参考</h2>
+<blockquote>
+<p><a href="https://zhuanlan.zhihu.com/p/133375078">一篇文章让你彻底弄懂 SSL/TLS 协议 - 知乎 (zhihu.com)</a></p>
+<p><a href="https://www.jianshu.com/p/aa3b7398eac9">对加密算法 AES-128-CBC 的一些理解 - 简书 (jianshu.com)</a></p>
+<p>https://halfrost.com/https_record_layer/</p>
+</blockquote>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[rtmp+flv服务搭建与基于python的flv流获取]]></title>
+        <id>https://hill-jiang.github.io/post/rtmpflv-fu-wu-da-jian-yu-ji-yu-python-de-flv-liu-huo-qu/</id>
+        <link href="https://hill-jiang.github.io/post/rtmpflv-fu-wu-da-jian-yu-ji-yu-python-de-flv-liu-huo-qu/">
+        </link>
+        <updated>2023-10-15T01:38:02.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="背景">背景</h2>
+<p>最近有个项目，用户可以在微信小程序上直接预览监控点，而不用额外下载 APP</p>
+<p>之前只能通过 APP 预览，基联 APP 的接口编写过模拟多路并行预览的工具</p>
+<p>但是小程序的鉴权方式完全不一致，而且预览流程也完全不一样（基于 HTTP+FLV），针对小程序的预览模拟，需要编写另外的脚本工具</p>
+<p>另外也立项了 RTMP 推流的需求，为了提前了解下相关协议，也为了方便脚本调试，尝试在本地搭建了相关服务并进行了脚本模拟拉流测试</p>
+<h2 id="本地服务搭建">本地服务搭建</h2>
+<p>本地搭建的推流、拉流框架如下：</p>
+<figure data-type="image" tabindex="1"><img src="https://hill-jiang.github.io/post-images/1697334009505.png" alt="" loading="lazy"></figure>
+<ol>
+<li>启动 nginx，开启 RTMP 服务，配置 HTTP 开启 FLV 服务</li>
+<li>通过 ffmpeg 将视频文件转码推流到 RTMP 服务</li>
+<li>通过 VLC 等拉流工具，使用 RTMP 协议或 FLV 协议进行拉流</li>
+</ol>
+<h3 id="nginx-http-flv-module-源码编译">nginx-http-flv-module 源码编译</h3>
+<p>nginx 本身是不支持流媒体功能的，开发者们为其添加了额外的流媒体功能，比如开源的 nginx-http-flv-module 但需要重新编译</p>
+<p>Windows 上源码编译 nginx 环境配置很麻烦，直接找编译好的包，解压就能使用</p>
+<p>万恶的 CSDN 上倒是有很多，但都要付费下载</p>
+<p>经过不懈努力终于在 github 上找到了一个编译好的包：https://github.com/chen-jia-hao/nginx-win-httpflv-1.19.0</p>
+<h3 id="nginx-配置文件修改">nginx 配置文件修改</h3>
+<p>修改 <code>conf/nginx.conf</code></p>
+<pre><code>worker_processes  1;
+ 
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+#error_log  logs/error.log  debug;
+ 
+#pid        logs/nginx.pid;
+ 
+events {
+    worker_connections  1024;
+}
+
+rtmp_auto_push on;
+rtmp_auto_push_reconnect 1s;
+rtmp_socket_dir temp;
+ 
+# 添加RTMP服务
+rtmp {
+    server {
+        listen 1935; # 监听端口
+ 
+        chunk_size 4000;
+        application live {
+            live on;
+            gop_cache on; # GOP缓存，on时延迟高，但第一帧画面加载快。off时正好相反，延迟低，第一帧加载略慢。
+        }
+    }
+}
+ 
+# HTTP服务
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+ 
+    #access_log  logs/access.log  main;
+ 
+    server {
+        listen       80; # 监听端口
+        
+        location / {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
+            add_header Access-Control-Allow-Headers 'DNT,X-Mx-ReqToken,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization';
+
+            if ($request_method = 'OPTIONS') {
+                return 204;
+            }
+            
+            root html;
+        }
+        
+        location /live {
+            flv_live on; #打开HTTP播放FLV直播流功能
+            chunked_transfer_encoding on; #支持'Transfer-Encoding: chunked'方式回复
+
+            add_header 'Access-Control-Allow-Origin' '*'; #添加额外的HTTP头
+            add_header 'Access-Control-Allow-Credentials' 'true'; #添加额外的HTTP头
+        }
+ 
+        location /stat.xsl {
+            root html;
+        }
+        location /stat {
+            rtmp_stat all;
+            rtmp_stat_stylesheet stat.xsl;
+        }
+        
+        location /control {
+            rtmp_control all; #rtmp控制模块的配置
+        }
+        
+    }
+}
+
+</code></pre>
+<h3 id="启动-nginx">启动 nginx</h3>
+<pre><code>start nginx -c conf/nginx.conf
+</code></pre>
+<h3 id="ffmpeg-推流">ffmpeg 推流</h3>
+<pre><code>ffmpeg -stream_loop -1 -re -i 诸葛亮王朗.mp4 -vcodec libx264 -acodec aac -f flv rtmp://localhost:1935/live/123
+</code></pre>
+<h3 id="vlc-拉流">VLC 拉流</h3>
+<p>VLC 媒体-打开网络串流：</p>
+<pre><code>http://localhost/live?port=1935&amp;app=live&amp;stream=123
+</code></pre>
+<p>随后即可播放：</p>
+<figure data-type="image" tabindex="2"><img src="https://hill-jiang.github.io/post-images/1697334037696.png" alt="" loading="lazy"></figure>
+<h2 id="python-获取-flv-视频流">Python 获取 FLV 视频流</h2>
+<p>因为目的是模拟多路并发预览，考虑用 Python 脚本实现多路并行获取 FLV 视频流，调研对比了多种实现方案</p>
+<h3 id="基于-opencv-库">基于 OpenCV 库</h3>
+<p>OpenCV 库提供了简单的 API，可直接获取网络视频流保存到本地文件：</p>
+<pre><code class="language-python">import cv2
+
+def save_video(flv_url):  
+    cap = cv2.VideoCapture(flv_url)  
+    fps = cap.get(cv2.CAP_PROP_FPS)  
+    size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))  
+    fourcc = cv2.VideoWriter_fourcc('F', 'L', 'V', '1')  
+    video_file = 'video/test.flv'
+    out_video = cv2.VideoWriter(video_file, fourcc, fps, size)  
+    rval, frame = cap.read()  
+    while rval:  
+        out_video.write(frame)  
+        rval, frame = cap.read()  
+        cv2.waitKey(1)  
+    cap.release()  
+    out_video.release()
+</code></pre>
+<p>实测保存的本地文件可以用 VLC 或 ffplay 直接播放</p>
+<p>但我的需求是模拟多路并发预览，OpenCV 库提供的获取流方法是阻塞式的，没法套用已有的 async 协程框架，想要实现多并发得用多线程等方式实现</p>
+<p>为了复用之前的框架，同时也为了更深入地理解 FLV 协议，还是决定用 asyncio 直接建立 Socket 连接试试</p>
+<h3 id="基于-socket-连接">基于 Socket 连接</h3>
+<p>HTTP-FLV，即将音视频数据封装成 FLV，然后通过 HTTP 协议传输给客户端。</p>
+<p>建立连接后，需要发送 FLV 协议规定的 HTTP 请求头，比如用 VLC 拉流，抓包看到建立 TCP 连接后，发送的 HTTP 请求及响应如下：</p>
+<figure data-type="image" tabindex="3"><img src="https://hill-jiang.github.io/post-images/1697334054908.png" alt="" loading="lazy"></figure>
+<p>因为服务器并不知道流的长度，所以响应的 HTTP 头并没有携带 <code>Content-Length</code> 字段，而是携带 <code>Transfer-Encoding: chunked</code> 字段，这样客户端就会一直接收数据了</p>
+<p>编写脚本用 asyncio 直接建立 Socket 连接，获取数据保存到本地文件：</p>
+<pre><code class="language-python">import asyncio
+import async_timeout
+from urllib.parse import urlparse
+
+async def save_video(flv_url):
+    video_file = &quot;video/test.flv&quot;
+    if os.path.exists(video_file):
+        os.remove(video_file)
+    flv_hostname = urlparse(flv_url).hostname
+    flv_port = &quot;80&quot;
+    flv_path = urlparse(flv_url).path
+    flv_query = urlparse(flv_url).query
+    try:
+        with async_timeout.timeout(20):
+            reader, writer = await asyncio.open_connection(flv_hostname, flv_port)
+            print(&quot;Flv Server Connected&quot;)
+    except asyncio.TimeoutError:
+        print(&quot;Connection Timeout!&quot;)
+    except ConnectionError:
+        print(&quot;Connection Failed!&quot;)
+    try:
+        header = &quot;&quot;&quot;GET {}?{} HTTP/1.1
+Host: {}
+Accept: */*
+Accept-Language: zh_CN
+User-Agent: VLC/3.0.8 LibVLC/3.0.8
+Range: bytes=0-
+
+&quot;&quot;&quot;.format(flv_path, flv_query, flv_hostname)
+        writer.write(header.encode())
+        await writer.drain()
+        recv_data = await reader.read(1024)
+        recv_header = recv_data.split(b'\r\n\r\n')[0]
+        print(recv_header.decode())
+        if 'HTTP/1.1 200 OK' in recv_header.decode():
+            print(&quot;Video Get Success&quot;)
+            if recv_data.split(b'\r\n\r\n')[1]:
+                flv_header_index = recv_data.split(b'\r\n\r\n')[1].find(b'\x46\x4C\x56')
+                flv_header = recv_data.split(b'\r\n\r\n')[1][flv_header_index:]
+                with open(video_file, 'wb') as fd:
+                    fd.write(flv_header)
+            else:
+                recv_data = await reader.read(1024)
+                flv_header_index = recv_data.find(b'\x46\x4C\x56')
+                flv_header = recv_data[flv_header_index:]
+                with open(video_file, 'wb') as fd:
+                    fd.write(flv_header)
+            while True:
+                recv_data = await reader.read(1024)
+                with open(video_file, 'wb') as fd:
+                    fd.write(recv_data)
+    except ConnectionError:
+        print(&quot;Connection Failed!&quot;)
+</code></pre>
+<p>其中 <code>b'\x46\x4C\x56'</code> 对应 <code>FLV</code>，即 FLV 头部，从服务器响应的 FLV 头部开始的数据保存到文件中，但是保存下来的文件却无法通过 ffplay 或 VLC 播放</p>
+<p>对比保存的文件内容，与抓包结果一致：</p>
+<figure data-type="image" tabindex="4"><img src="https://hill-jiang.github.io/post-images/1697334066905.png" alt="" loading="lazy"></figure>
+<p>再对比通过 OpenCV 保存的文件，虽然可以播放，但是与抓包结果的 FLV 头部却不一样：</p>
+<figure data-type="image" tabindex="5"><img src="https://hill-jiang.github.io/post-images/1697334073380.png" alt="" loading="lazy"></figure>
+<p>说明 OpenCV 在获取视频流数据、保存到文件的时候就对头部做了一些处理，让其可以正常播放</p>
+<p>而直接把通过 Socket 获取到的二进制数据保存到文件，其 FLV 头部并不是合法的格式，所以无法直接播放</p>
+<h3 id="基于-requests">基于 requests</h3>
+<p>查找资料的时候发现，基于 requests 库可以直接用 get 方法获取 HTTP-FLV 数据，同样可以保存到文件：</p>
+<pre><code class="language-python">import requests
+
+def save_video_requests(flv_url):
+    video_file = &quot;video/test_requests.flv&quot;
+    if os.path.exists(video_file):
+        os.remove(video_file)
+    chunk_size = 1024
+    response = requests.get(flv_url, stream=True, verify=False)
+    with open(video_file, 'wb') as file:
+        for data in response.iter_content(chunk_size = chunk_size):
+            file.write(data)
+            file.flush()
+</code></pre>
+<p>尝试了一下发现此方法保存的文件同样可以直接播放，对比抓包结果与文件内容如下：</p>
+<figure data-type="image" tabindex="6"><img src="https://hill-jiang.github.io/post-images/1697334079970.png" alt="" loading="lazy"></figure>
+<p>发现好像保存的文件就是去掉了抓包结果中的一些换行符（<code>0d0a</code>），部分换行符前面还有一些数据，看来也是保存的时候底层做了一些处理。</p>
+<p>其实换行符和部分换行符前面的数据是 HTTP 分块传输编码规则导致的：</p>
+<ol>
+<li>每个分块包含两个部分，长度头和数据块；</li>
+<li>长度头是以 CRLF（回车换行，即 <code>\r\n</code>）结尾的一行明文，用 16 进制数字表示长度；</li>
+<li>数据块紧跟在长度头后，最后也用 CRLF 结尾，但数据不包含 CRLF；</li>
+<li>最后用一个长度为 0 的块表示结束，即 <code>0\r\n\r\n</code>。</li>
+</ol>
+<figure data-type="image" tabindex="7"><img src="https://hill-jiang.github.io/post-images/1697334087062.png" alt="" loading="lazy"></figure>
+<p>所以我们只要在保存数据的时候，只保存 <code>chunked data</code>，把 <code>length</code> 和换行符都过滤掉就可以了</p>
+<p>这原理看起来简单，但真要直接处理二进制数据还比较复杂</p>
+<p>不过既然 requests 可以实现，那协程的 aiohttp 应该也可以吧</p>
+<h3 id="基于-aiohttp">基于 aiohttp</h3>
+<pre><code class="language-python">import aiohttp
+
+async def save_video_aiohttp(flv_url):
+    video_file = &quot;video/test_aiohttp.flv&quot;
+    if os.path.exists(video_file):
+        os.remove(video_file)
+    chunk_size = 1024
+    conn = aiohttp.TCPConnector()
+    async with aiohttp.ClientSession(connector=conn) as session:
+        async with session.get(flv_url) as response:
+            with open(video_file, 'wb') as file:
+                while True:
+                    data = await response.content.read(chunk_size)
+                    if not data:
+                        break
+                    file.write(data)
+                    file.flush()
+</code></pre>
+<p>测试能通过 ffplay 和 VLC 正常播放，aiohttp 套入协程框架也很方便，最终就决定用这种方式了</p>
+<h2 id="参考">参考</h2>
+<ul>
+<li>https://www.cnblogs.com/hhmm99/p/16050844.html</li>
+<li>https://github.com/winshining/nginx-http-flv-module</li>
+<li>https://github.com/chen-jia-hao/nginx-win-httpflv-1.19.0</li>
+<li>https://www.cnblogs.com/vczf/p/14813438.html</li>
+<li>https://blog.csdn.net/Enderman_xiaohei/article/details/102626855</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[博客收集]]></title>
+        <id>https://hill-jiang.github.io/post/博客收集/</id>
+        <link href="https://hill-jiang.github.io/post/博客收集/">
+        </link>
+        <updated>2023-10-03T03:13:40.000Z</updated>
+        <content type="html"><![CDATA[<ul>
+<li><a href="https://github.com/ruanyf/weekly">科技爱好者周刊</a></li>
+<li><a href="https://hellogithub.com/">HelloGitHub</a></li>
+<li><a href="https://github.com/chinesehuazhou/python-weekly">Python 潮流周刊</a></li>
+<li><a href="https://testerhome.com/">测试之家</a></li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Python 字典的浅拷贝与深拷贝]]></title>
+        <id>https://hill-jiang.github.io/post/Python字典的浅拷贝与深拷贝/</id>
+        <link href="https://hill-jiang.github.io/post/Python字典的浅拷贝与深拷贝/">
+        </link>
+        <updated>2023-10-02T08:21:50.000Z</updated>
+        <content type="html"><![CDATA[<p>最近在写 Python 脚本的时候用到了字典的拷贝，踩了一个坑，在此记录一下</p>
+<p>对于 Python 字典，如果直接用<code>=</code>赋值，修改一个字典会同时修改另一个：</p>
+<pre><code>Python 3.7.4 (tags/v3.7.4:e09359112e, Jul  8 2019, 20:34:20) [MSC v.1916 64 bit (AMD64)] on win32
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&gt;&gt;&gt; dict_1 = {'1': 1}
+&gt;&gt;&gt; dict_2 = dict_1
+&gt;&gt;&gt; dict_2['1'] = 2
+&gt;&gt;&gt; dict_2
+{'1': 2}
+&gt;&gt;&gt; dict_1
+{'1': 2}
+</code></pre>
+<p>一般使用<code>copy()</code>方法进行拷贝，在修改拷贝后的字典时，不会影响原来的字典：</p>
+<pre><code>Python 3.7.4 (tags/v3.7.4:e09359112e, Jul  8 2019, 20:34:20) [MSC v.1916 64 bit (AMD64)] on win32
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&gt;&gt;&gt; dict_1 = {'1': 1}
+&gt;&gt;&gt; dict_2 = dict_1.copy()
+&gt;&gt;&gt; dict_2['1'] = 2
+&gt;&gt;&gt; dict_2
+{'1': 2}
+&gt;&gt;&gt; dict_1
+{'1': 1}
+</code></pre>
+<p>但是，当字典超过一层时，修改<code>copy()</code>后的键值时会同样修改原字典的键值：</p>
+<pre><code>&gt;&gt;&gt; dict_3 = {'1': {'1': 3}}
+&gt;&gt;&gt; dict_4 = dict_3.copy()
+&gt;&gt;&gt; dict_4['1']['1'] = 4
+&gt;&gt;&gt; dict_4
+{'1': {'1': 4}}
+&gt;&gt;&gt; dict_3
+{'1': {'1': 4}}
+</code></pre>
+<p>后来网上查了一下才知道，Python 字典的拷贝分为浅拷贝和深拷贝</p>
+<p><code>copy()</code>为浅拷贝，只拷贝字典的父级目录；而<code>deepcopy()</code>为深拷贝，会将整个字典全都拷贝</p>
+<p>使用<code>deepcopy()</code>需要导入<code>copy</code>模块</p>
+<pre><code>Python 3.7.4 (tags/v3.7.4:e09359112e, Jul  8 2019, 20:34:20) [MSC v.1916 64 bit (AMD64)] on win32
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&gt;&gt;&gt; import copy
+&gt;&gt;&gt; dict_3 = {'1': {'1': 3}}
+&gt;&gt;&gt; dict_4 = copy.deepcopy(dict_3)
+&gt;&gt;&gt; dict_4['1']['1'] = 4
+&gt;&gt;&gt; dict_4
+{'1': {'1': 4}}
+&gt;&gt;&gt; dict_3
+{'1': {'1': 3}}
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Python 进程间通信初探]]></title>
+        <id>https://hill-jiang.github.io/post/Python 进程间通信/</id>
+        <link href="https://hill-jiang.github.io/post/Python 进程间通信/">
+        </link>
+        <updated>2023-10-02T08:21:29.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="需求背景">需求背景</h2>
+<p>最近在写商用云平台的虚拟充电桩设备，本来想着在之前虚拟 IPC 的基础上修改一些类型字段、加一些特定的适配协议和逻辑就可以了，后来发现还是有些不足的地方。</p>
+<p>现有的虚拟设备是基于 Python locust 框架写的，消息上报实现方案是预定义好上报的周期，比如每分钟上报一次，在 locust 中预构建一个子任务，每分钟调用一次消息上报接口。这样的方法不足是，没法模拟真实设备的场景，随时触发任意类型的消息进行上报。另外，如果在运行过程中，需要手动修改某些虚拟设备的配置信息，也无法实现，只能停止后修改再重新运行。</p>
+<p>换句话说，现有的虚拟设备工具，所有配置和逻辑都只能在运行前就预定义好，一旦运行之后就无法再介入修改了。</p>
+<p>需要实现的优化目标是，在虚拟设备工具运行过程中，外部触发某个条件，能够直接影响内部正在运行的任务，这就涉及到了 Python 进程间的通信。</p>
+<h2 id="概念">概念</h2>
+<p>进程是操作系统分配和调度系统资源（CPU、内存）的基本单位。进程之间是相互独立的，每启动一个新的进程相当于把数据进行了一次克隆，子进程里的数据修改无法影响到主进程中的数据，不同子进程之间的数据也不能直接共享，这是多进程在使用中与多线程最明显的区别。</p>
+<p>常用的进程间通信方法有很多：</p>
+<ol>
+<li>信号量（ semaphore ）</li>
+<li>信号 （ signal ）</li>
+<li>管道（ pipe ）</li>
+<li>消息队列（ message queue ）</li>
+<li>共享内存（ shared memory ）</li>
+<li>套接字（ socket ）</li>
+<li>文件 （ file ）</li>
+</ol>
+<p>具体到 Python，以上提到的进程间通信方法也都有对应实现。</p>
+<h3 id="信号量semaphore">信号量（semaphore）</h3>
+<p>信号量是一个共享资源访问者的计数器，可以用来控制多个进程对共享资源的并发访问数。它常作为一种锁机制，防止指定数量的进程正在访问共享资源时，其他进程也访问该资源。每次有一个进程获得信号量时，计数器 -1，若计数器为 0 时，其他进程就停止访问信号量，一直阻塞直到其他进程释放信号量。</p>
+<p>示例：</p>
+<pre><code class="language-python">import os
+import time
+from multiprocessing import Process, Semaphore
+
+def handle(sem):
+    sem.acquire()
+    print(f&quot;{int(time.time())}, {os.getpid()} 开始处理事件&quot;)
+    time.sleep(1)
+    print(f&quot;{int(time.time())}, {os.getpid()} 结束处理事件&quot;)
+    sem.release()
+
+if __name__ == '__main__':
+    sem = Semaphore(4)
+    for i in range(5):
+        p = Process(target=handle, args=(sem,))
+        p.start()
+
+</code></pre>
+<p>运行结果：</p>
+<pre><code>1653378426, 216 开始处理事件
+1653378426, 3888 开始处理事件
+1653378426, 9064 开始处理事件
+1653378426, 13968 开始处理事件
+1653378427, 216 结束处理事件
+1653378427, 17160 开始处理事件
+1653378427, 9064 结束处理事件
+1653378427, 3888 结束处理事件
+1653378427, 13968 结束处理事件
+1653378428, 17160 结束处理事件
+</code></pre>
+<p>可以看到，同时最多只有 4 个进程处理事件，当一个进程的事件处理结束释放信号量后，第 5 个进程才能开始处理事件。</p>
+<p>信号量常用于控制某共享资源的多进程并发访问者数量，并不适用于进程之间传输具体数据。</p>
+<h3 id="信号sginal">信号（sginal）</h3>
+<p>信号是一种比较复杂的通信方式，用于通知接收进程某个事件已经发生。</p>
+<p>进程间信号最先出现于 UNIX 系统，每个信号都有自己的系统调用，后续修改为统一的 <code>signal()</code> 与 <code>kill()</code> 调用。最初的进程间信号系统是异步的，而且没有队列的概念，即不同信号间很容易产生冲突，导致应用程序来不及处理前一个信号。POSIX 规范后来改进了这一设计，另外规定了实时信号，靠队列的方式避免了信号冲突的问题。</p>
+<p>为了统一各系统下进程间信号与其整数的统一，POSIX 规范规定了 19 个信号及其对应整数与行为：</p>
+<pre><code>Signal     Value     Action   Comment
+───────────────────────────────────
+SIGHUP        1       Term    Hangup detected on controlling terminal or death of controlling process
+SIGINT        2       Term    Interrupt from keyboard
+SIGQUIT       3       Core    Quit from keyboard
+SIGILL        4       Core    Illegal Instruction
+SIGABRT       6       Core    Abort signal from abort(3)
+SIGFPE        8       Core    Floating point exception
+SIGKILL       9       Term    Kill signal
+SIGSEGV      11       Core    Invalid memory reference
+SIGPIPE      13       Term    Broken pipe: write to pipe with no readers
+SIGALRM      14       Term    Timer signal from alarm(2)
+SIGTERM      15       Term    Termination signal
+SIGUSR1   30,10,16    Term    User-defined signal 1
+SIGUSR2   31,12,17    Term    User-defined signal 2
+SIGCHLD   20,17,18    Ign     Child stopped or terminated
+SIGCONT   19,18,25    Cont    Continue if stopped
+SIGSTOP   17,19,23    Stop    Stop process
+SIGTSTP   18,20,24    Stop    Stop typed at terminal
+SIGTTIN   21,21,26    Stop    Terminal input for background process
+SIGTTOU   22,22,27    Stop    Terminal output for background process
+</code></pre>
+<p>在 Linux/UNIX 下，由于 SIGINT 与 SIGTSTP 信号较为常用，这两个信号可以分别使用 <code>Ctrl+C</code> 与 <code>Ctrl+Z</code> 快捷键触发，Windows 支持前者，但不支持后者。此外在 Linux/UNIX 下还有一个不常用的 <code>Ctrl+\</code> 快捷键，用于发送 SIGQUIT 信号。</p>
+<p>首先介绍一个简单的方式，即异常捕获。Python 脚本运行过程中按下中断键（如 Ctrl+C）会触发一个 <code>KeyboardInterrupt</code> 异常，我们只要在需要处理中断的代码段外使用 <code>try...except...</code> 将其包裹起来即可，如下：</p>
+<pre><code class="language-python">try:
+    # Some code
+except KeyboardInterrupt:
+    # Another code
+</code></pre>
+<p>使用上文异常捕获的方式存在若干不足。一方面，对于一个庞大的系统来说，可能在不同的执行阶段对于退出有不同的处理方式；另一方面，尽管使用 <code>Ctrl+C</code> 热键触发 <code>SIGINT</code> 中断是最常见的方式，但并非所有 <code>SIGINT</code> 信号都是通过热键触发，也并非所有信号都是 <code>SIGINT</code>。Python 为了实现信号的安装，引入了 <code>signal</code> 模块。下文以 <code>SIGINT</code> 与 <code>SIGTERM</code> 为例，简述该模块的使用。</p>
+<pre><code class="language-python">import signal
+
+def bye(signum, frame):
+    print(&quot;Bye bye&quot;)
+    exit(0)
+
+signal.signal(signal.SIGINT, bye)
+signal.signal(signal.SIGTERM, bye)
+
+while True:
+    pass
+</code></pre>
+<p>当执行过程中按下 <code>Ctrl+C</code> 或在其他终端窗口中输入 <code>kill -2 [pid]</code>（2 的含义见上表）时，可以看到 <code>bye(signum, frame)</code> 函数被调用，并成功退出。</p>
+<p>与信号量类似，信号仅用于进程间传递特定信号，并不适用于数据传输。</p>
+<h3 id="管道pipe">管道（pipe）</h3>
+<p>管道常用来在两个进程间进行通信，两个进程分别位于管道的两端。</p>
+<p>Python multiprocessing 模块的 Pipe 方法返回（conn1， conn2）代表一个管道的两个端。Pipe 方法有 duplex 参数，如果 duplex 参数为 True（默认值），那么这个参数是全双工模式，也就是说 conn1 和 conn2 均可收发。若 duplex 为 False，conn1 只负责接收消息，conn2 只负责发送消息。<code>send</code> 和 <code>recv</code> 方法分别是发送和接受消息的方法。例如，在全双工模式下，可以调用 <code>conn1.send</code> 发送消息，<code>conn1.recv</code> 接收消息。如果没有消息可接收，<code>recv</code> 方法会一直阻塞。如果管道已经被关闭，那么 <code>recv</code> 方法会抛出 <code>EOFError</code>。</p>
+<p>示例：创建两个进程，一个子进程通过 Pipe 发送数据，一个子进程通过 Pipe 接收数据。</p>
+<pre><code class="language-python">from multiprocessing import Pipe, Process
+import os
+import time
+
+def proc_send(pipe, data):
+    for d in data:
+        print(f&quot;{os.getpid()} send: {d}&quot;)
+        pipe.send(d)
+        time.sleep(1)
+
+def proc_recv(pipe):
+    while True:
+        print(f&quot;{os.getpid()} recv: {pipe.recv()}&quot;)
+        time.sleep(1)
+
+if __name__ == '__main__':
+    pipe = Pipe()
+    p1 = Process(target=proc_send, args=(pipe[0], [i for i in range(5)]))
+    p2 = Process(target=proc_recv, args=(pipe[1],))
+    p1.start()
+    p2.start()
+</code></pre>
+<p>输出如下：</p>
+<pre><code>16132 send: 0
+16596 recv: 0
+16132 send: 1
+16596 recv: 1
+16132 send: 2
+16596 recv: 2
+16132 send: 3
+16596 recv: 3
+16132 send: 4
+16596 recv: 4
+</code></pre>
+<h3 id="消息队列message-queue">消息队列（message queue）</h3>
+<p>消息队列是由消息的链表，存放在内核中并由消息队列标识符标识。消息队列克服了信号传递信息少、管道只能承载无格式字节流以及缓冲区大小受限等缺点。</p>
+<p>Python Queue 是多进程安全的队列，可以使用 Queue 实现多进程之间的数据传递。</p>
+<p><code>put</code> 方法用以插入数据到队列中， <code>put</code> 方法还有两个可选参数： blocked 和 timeout。如果 blocked 为 True（默认值），并且 timeout 为正值，该方法会阻塞 timeout 指定的时间，直到该队列有剩余的空间。如果超时，会抛出 Queue.full 异常。如果 blocked 为 False，但该 Queue 已满，会立即抛出 Queue.full 异常。</p>
+<p><code>get</code> 方法可以从队列读取并且删除一个元素。同样， <code>get</code> 方法有两个可选参数： blocked 和 timeout。如果 blocked 为 True（默认值），并且 timeout 为正值，那么在等待时间内没有取到任何元素，会抛出 Queue.Empty 异常。如果 blocked 为 False，有两种情况存在，如果 Queue 有一个值可用，则立即返回该值，否则，如果队列为空，则立即抛出 Queue.Empty 异常。</p>
+<p>示例：创建两个进程，一个子进程通过 Queue 发送数据，一个子进程通过 Queue 接收数据。</p>
+<pre><code class="language-python">from multiprocessing import Queue, Process
+import time
+import os
+
+def send(q, data):
+    for d in data:
+        print(f&quot;{os.getpid()} send: {d}&quot;)
+        q.put(d)
+        time.sleep(1)
+
+def recv(q):
+    while True:
+        if not q.empty():
+            print(f&quot;{os.getpid()} recv: {q.get()}&quot;)
+            time.sleep(1)
+        else:
+            continue
+
+if __name__ == '__main__':
+    q = Queue()
+    p1 = Process(target=send, args=(q, [i for i in range(5)]))
+    p2 = Process(target=recv, args=(q,))
+    p1.start()
+    p2.start()
+</code></pre>
+<p>输出如下：</p>
+<pre><code>16564 send: 0
+9984 recv: 0
+16564 send: 1
+9984 recv: 1
+16564 send: 2
+9984 recv: 2
+16564 send: 3
+9984 recv: 3
+16564 send: 4
+9984 recv: 4
+</code></pre>
+<p>管道和消息队列可用于进程间传输数据，但每次传递的数据大小受限，效率偏低。</p>
+<h3 id="共享内存shared-memory">共享内存（shared memory）</h3>
+<p>共享内存就是映射一段能被其他进程所访问的内存，这段共享内存由一个进程创建，但多个进程都可以访问。共享内存是最快的进程间通信方式，它是针对其他进程间通信方式运行效率低而专门设计的。它往往与其他通信机制，如信号量，配合使用，来实现进程间的同步和通信。</p>
+<p>Python 标准库中实现共享内存通信的工具有 mmap，但是该库只能用于基本类型，且需要预先分配存储空间，对于自定义类型的对象使用起来有诸多不便。</p>
+<p>比较好用的第三方工具有 apache 开源的 pyarrow，不需要预先定义存储空间且任意可序列化的对象均可存入共享内存。但使用时需要注意：pyarrow 反序列化的对象为只读对象不可修改其值，想要修改对象可先通过对象 copy。</p>
+<p>Python 3.8 及以上版本支持 <code>multiprocessing.shared_memory</code>，一般来说，进程被限制只能访问属于自己进程空间的内存，但是共享内存允许跨进程共享数据，从而避免通过进程间发送消息的形式传递数据。相比通过磁盘、套接字或者其他要求序列化、反序列化和复制数据的共享形式，直接通过内存共享数据拥有更出色性能。</p>
+<p>shared_memory 的使用也非常简单，只需要定义一个 <code>ShareableList</code>，就可以在多个进程之间访问同一对象。</p>
+<p><code>ShareableList</code> 提供一个可修改的类 list 对象，其中所有值都存放在共享内存块中。这限制了可被存储在其中的值只能是 <code>int</code>, <code>float</code>, <code>bool</code>, <code>str</code> （每条数据小于 10M）, <code>bytes</code> （每条数据小于 10M）以及 <code>None</code> 这些内置类型。它另一个显著区别于内置 <code>list</code> 类型的地方在于它的长度无法修改（比如，没有 append, insert 等操作）且不支持通过切片操作动态创建新的 <code>ShareableList</code> 实例。</p>
+<p>a.py：</p>
+<pre><code class="language-python">from multiprocessing import shared_memory
+
+shared_list = shared_memory.ShareableList([None, 1, &quot;haha&quot;, False, b'123'], name=&quot;test&quot;)
+while True:
+    pass
+
+</code></pre>
+<p>b.py：</p>
+<pre><code class="language-python">from multiprocessing import shared_memory
+
+data = shared_memory.ShareableList(name=&quot;test&quot;)
+for d in data:
+    print(d)
+
+</code></pre>
+<p>先运行 <code>a.py</code>，再运行 <code>b.py</code>，得到的运行结果为：</p>
+<pre><code>None
+1
+haha
+False
+b'123'
+</code></pre>
+<p>相比于管道和消息队列，共享内存具有更高的性能和更大的数据传输量。</p>
+<h3 id="套接字socket">套接字（socket）</h3>
+<p>socket 无疑是通信使用最为广泛的方式了，它不但能跨进程还能跨网络。在两个进程中创建 socket 连接，就能实现相互通信。</p>
+<p>基本的 socket 就是基于以太网的套接字，也是最常用的。server 端先创建一个套接字，绑定一个本地端口，等待 client 连接；client 也创建一个套接字，直接连接到 server 端就可以正常进行通信了。不过，传输的数据必须为 <code>byte</code> 类型。</p>
+<p>server.py：</p>
+<pre><code class="language-python">import socket
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.bind((&quot;localhost&quot;, 2333))
+sock.listen()
+
+c, addr = sock.accept()
+print(f&quot;Accept connect from {addr}&quot;)
+while True:
+    data = c.recv(1024).decode()
+    if data:
+        print(data)
+        c.send(f&quot;{data} Reply&quot;.encode())
+
+</code></pre>
+<p>client.py：</p>
+<pre><code class="language-python">import socket
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((&quot;localhost&quot;, 2333))
+
+sock.send(b&quot;Data&quot;)
+print(sock.recv(1024).decode())
+
+</code></pre>
+<p>先运行 <code>server.py</code>，再运行 <code>client.py</code>，server 端输出：</p>
+<pre><code>Accept connect from ('127.0.0.1', 52410)
+Data
+</code></pre>
+<p>client 端输出：</p>
+<pre><code>Data Reply
+</code></pre>
+<p>Unix domain socket：</p>
+<p>当同一个机器的多个进程使用普通套接字进行通信时，需要经过网络协议栈，这非常浪费，因为同一个机器根本没有必要走网络。所以 Unix 提供了一个套接字的特殊版本，它使用和套接字一摸一样的 api，但是地址不再是网络端口，而是文件。相当于我们通过某个特殊文件来进行套接字通信，不需要经过网络协议栈，不需要打包拆包、计算校验和、维护序号和应答等，只是将应用层数据从一个进程拷贝到另一个进程。</p>
+<p>具体实现上，只需要在创建套接字的时候指定创建方式为 <code>socket.AF_UNIX</code> 即可：</p>
+<pre><code>server_addr = &quot;./tmp_sock&quot;
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+sock.bind(server_addr)
+</code></pre>
+<p>不过 Unix 域套接字仅适用于 Unix 系统，在 Windows 系统下还是老实用以太网套接字绑定 localhost 吧。</p>
+<h3 id="文件file">文件（file）</h3>
+<p>使用文件进行通信是最简单的一种通信方式，一个进程将结果输出到临时文件，另一个进程从文件中读出来。</p>
+<p>这个实现很简单，就不做示例了，不过感觉效率很低，频繁读写文件可能还存在同步和性能开销问题，不是很推荐使用。</p>
+<h2 id="总结">总结</h2>
+<p>本文对 Python 中的各类进程间通信实现方案进行了介绍。</p>
+<p>使用总结：</p>
+<ul>
+<li>仅进程同步不涉及数据传输，可以使用信号、信号量；</li>
+<li>若进程间需要传递少量数据，可以使用管道、消息队列；</li>
+<li>若进程间需要传递大量数据，最佳方式是使用共享内存，这样减少数据拷贝、传输的时间内存代价；</li>
+<li>跨主机的进程间通信（RPC）可以使用 socket 通信，但 socket 同样可用于相同主机不同进程间的通信。</li>
+</ul>
+<p>对各类进程间通信方案，只是做了简单的试用，并未涉及实现原理、冲突处理、锁机制、性能表现等，将在实际开发使用过程中继续深入了解。</p>
+<h2 id="参考">参考</h2>
+<ul>
+<li><a href="https://blog.csdn.net/tyhj_sf/article/details/97401263">Python 实现多进程间通信的方法总结_tyhj_sf 的博客-CSDN 博客_python 多进程通信方式</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/446374478">一文读懂 Python 进程间通信的几种方式 - 知乎 (zhihu.com)</a></li>
+<li><a href="https://www.jianshu.com/p/5eb388340038">6. python 多进程信号量－Semaphore - 简书 (jianshu.com)</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/104232555">进程间信号简述及使用 Python 响应进程间信号 - 知乎 (zhihu.com)</a></li>
+<li><a href="https://blog.csdn.net/ouyangzhenxin/article/details/100023496">python 多进程-进阶-进程间通信之 Pipe_运维家的博客-CSDN 博客_python 多进程 pipe</a></li>
+<li><a href="https://blog.csdn.net/hxxjxw/article/details/105742837">Python 多进程（三）——进程间通信 &amp; Queue 队列_hxxjxw 的博客-CSDN 博客_python 进程间通信 queue</a></li>
+<li><a href="https://docs.python.org/zh-cn/3/library/multiprocessing.shared_memory.html">multiprocessing.shared_memory --- 可从进程直接访问的共享内存 — Python 3.10.4 文档</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/37370601">深入 Python 进程间通信原理——图文版 - 知乎 (zhihu.com)</a></li>
+<li><a href="https://www.runoob.com/python/python-socket.html">Python 网络编程 | 菜鸟教程 (runoob.com)</a></li>
+</ul>
+]]></content>
+    </entry>
+</feed>
